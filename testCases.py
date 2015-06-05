@@ -14,7 +14,7 @@ class FlaskrTestCase(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
         app.config["MONGODB_DB"] = 'test'
-        connect('test', host='10.240.115.93', port=27017, username='test', password = 'test')
+        connect('test', host='127.0.0.1', port=27017, username='test', password = 'test')
         self.app = self.app.test_client()
 
 
