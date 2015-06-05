@@ -1046,7 +1046,7 @@ angular.module('weberApp')
                     email: this.formData.email,
                     password: this.formData.password
                 }).then(function(response) {
-                    //console.log('-----------index user--------------', response)
+                    console.log('-----------index user--------------', response)
                     $auth.setToken(response.data.token);
 
                     $rootScope.currentUser = response.data.user;
