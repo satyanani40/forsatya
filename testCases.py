@@ -12,7 +12,7 @@ class FlaskrTestCase(unittest.TestCase):
 
     def setUp(self):
         self.app = Eve(settings = settings)
-        self.app = server.app.test_client()
+        self.test_client = self.app.test_client()
 
     """def tearDown(self):
         os.close(self.db_fd)
