@@ -13,8 +13,14 @@ class FlaskrTestCase(unittest.TestCase):
     def setUp(self):
         self.app = app
         self.app.config['TESTING'] = True
-        #self.app = server.app.test_client()
-        self.app.test_client()
+
+        self.app.config['MONGO_HOST'] = '10.240.115.93'
+        self.app.config['MONGO_PORT'] = 27017
+        self.app.config['MONGO_USERNAME'] = 'test'
+        self.app.config['MONGO_PASSWORD'] = 'test'
+        self.app.config['MONGO_DBNAME'] = 'test'
+
+        self.app = server.app.test_client()
 
 
     """def tearDown(self):
