@@ -73,7 +73,6 @@ def login_required(f):
         g.user_id = payload['sub']
 
         return f(*args, **kwargs)
-
     return decorated_function
 
 @app.route('/auth/login', methods=['POST'])
@@ -81,19 +80,18 @@ def login():
     accounts = app.data.driver.db['people']
     user = accounts.find_one({'email': request.json['email']})
     if not user:
-        response = jsonify(error='Your email does not exist')
-        response.status_code = 401
+        response = jsonify(error='Your email does not exist', status_code = 401)
         return response
     if not user['email_confirmed'] == True:
-        response = jsonify(error='Email is not confirmed')
-        response.status_code = 401
+        response = jsonify(error='Email is not confirmed', status_code = 401)
         return response
     if not user or not check_password_hash(user['password']['password'], request.json['password']):
-        response = jsonify(error='Wrong Email or Password')
-        response.status_code = 401
+        response = jsonify(error='Wrong Email or Password', status_code = 401)
         return response
+
     token = create_token(user)
-    return dumps({'user':filterIdFields(user, all=True), 'token': token})
+    return dumps({'user':filterIdFields(user, all=True), 'token': token, 'status_code':200})
+
 
 
 
@@ -738,11 +736,11 @@ def signup():
 
         token = create_token(user)
         user['_id'] = str(user['_id'])
-        return dumps({'token':token, 'user': user, 'status':200})
+        return dumps({'token':token, 'user': user, 'status_code':200})
 
     else:
-        response = jsonify(error='You are already registered with this email, Please try forgot password ')
-        response.status_code = 401
+        response = jsonify(error='You are already registered with this email, Please try forgot password',
+                           status_code = 401)
         return response
 
 @app.route('/get_interested_ids', methods=['POST', 'GET'])

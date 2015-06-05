@@ -2,321 +2,256 @@
 
 /**
  * @ngdoc function
- * @name weberApp.controller:EmailDetailsCtrl
+ * @name weberApp.controller:ForgotPasswordCtrl
  * @description
- * # EmailDetailsCtrl
+ * # ForgotPasswordCtrl
  * Controller of the weberApp
  */
 angular.module('weberApp')
-	.controller('enterInterestsCtrl', function($timeout, questions, InterestsService, $http,
-	 Restangular, $scope, $auth, $alert, $location, $routeParams, $rootScope) {
+	.directive('passwordrecovery', function ($compile,$location, CurrentUser, Restangular, $routeParams, friendsActivity) {
+        return {
+            restrict: 'E',
+            replace: true,
+            link: function (scope, element, attrs) {},
+            controller:function($scope, $http, $element, $attrs, $transclude){
 
-        //var element = $routeParams.userId;
-        //console.log(element)
-        $scope.email = $routeParams.email;
-        //console.log($scope.user);
-        $scope.show_interests = true;
-        $scope.show_questions = false;
-        $scope.final_interests_array = [];
+                $scope.sendPassword = function(){
 
-        $scope.$watchCollection('data.tags',function(val){
-            $scope.final_interests_array = val;
-        });
+                    $scope.password_recovery_busy = $http.post('/forgotpasswordlink', {email:$scope.email}).
+                        success(function(data, status, headers, config) {
+                            // this callback will be called asynchronously
+                            // when the response is available
+                            var html = '<b>password link has been sent to your email</b><br><p>Please check your email</p>';
+                            var e =$compile(html)($scope);
+                            $element.replaceWith(e);
+                        }).
+                        error(function(error) {
+                            // called asynchronously if an error occurs
+                            // or server returns response with an error status.
+                            var html = '<b>your email does not exist, Please check it once..</b>';
+                            var e =$compile(html)($scope);
+                            $element.replaceWith(e);
+                        });
 
-        $http.get('/api/me', {
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': $auth.getToken()
-			}
-		}).success(function(userId) {
-            Restangular.one('people', JSON.parse(userId)).get({seed:Math.random()}).then(function(user) {
-                $rootScope.currentUser = user;
-                if($rootScope.currentUser.email_confirmed == false){
-                    var userNameAlert = $alert({
-                        title: 'Thanks for Registering: ',
-                        content: 'Your email is not confirmed',
-                        placement: 'top-left',
-                        type: 'danger',
-                        show: true
-                    });
+
                 }
+            }
+        };
+    })
+    .directive('changepassworddirective', function ($compile, $location, $timeout, CurrentUser, Restangular, $routeParams, friendsActivity) {
+        return {
+            restrict: 'E',
+            replace: true,
+            link: function (scope, element, attrs) {},
+            controller:function($scope, $http, $element, $attrs, $transclude, $routeParams){
 
-                $scope.afterFinishQuestions = function(){
-                    $location.path('/home');
-                }
-                // questions section functions
-                $scope.questions = new questions(user);
-                $scope.questions.getallquestions();
+                var user_name = $routeParams.user_name;
+                var password_random_string = $routeParams.password_random_string;
 
-                $scope.answered = function(question, ans){
+                console.log(user_name+password_random_string);
 
-                    for(var temp in $rootScope.currentUser.questions){
-                        if($rootScope.currentUser.questions[temp].questionid == question){
-                            $rootScope.currentUser.questions[temp].answer = ans;
-                            $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
-                            return;
-                        }
-                    }
+                $scope.passwordButton = function(){
 
-                    $rootScope.currentUser.questions.push({'questionid':question, 'answer': ans});
-                    //console.log('pushed answereds', $rootScope.currentUser.questions)
-                    $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
-                    return;
-                }
-
-                $scope.checkAnswer = function(question_id){
-                    data = $scope.questions.checkAnswer(question_id);
-                    return data;
-                }
-                // end of questions section
-
-                if($rootScope.currentUser.interests.length){
-                    // success show
-                    $scope.show_interests = false;
-                    $scope.show_questions = true;
-                }
-                else{
-                    // success hide
-                    $scope.show_interests = true;
-                    $scope.show_questions = false;
-                }
-                $scope.newUserInterests = function(){
-                    for(var temp in $rootScope.currentUser.interests){
-                        $scope.final_interests_array.push(InterestsService.get($rootScope.currentUser.interests[temp]).interest_string)
-                    }
-                    $scope.Interests_busy = $timeout(function() {
-                        $http.post('/get_interested_ids',
-                        {
-                            interests: $scope.final_interests_array,
-                            username: $rootScope.currentUser.username
+                    $scope.new_password = $http.post('/get_new_hash_password', {
+                            user_name:$routeParams.user_name,
+                            new_password:$scope.formData.password
                         })
                         .success(function(data, status, headers, config) {
-                            //console.log("======return success of interests of ids",data);
-                            $rootScope.currentUser.interests = data.interests;
-                            $scope.show_interests = false;
-                            $scope.show_questions = true;
-                            var interestsAlert = $alert({
-                                title: 'Success',
-                                content: 'Updated your Interests',
-                                placement: 'top',
-                                type: 'success',
-                                show: true
+                            //console.log("========hashed password======");
+                            //console.log(data);
+                            $scope.hashed_password = data;
+
+                            var Update_Password = Restangular.one('people', $routeParams.user_name).get({seed:Math.random()});
+
+                            Update_Password.then(function(response){
+                                $scope.user = response;
+
+                                //console.log("=====user details===");
+                                //console.log($scope.user);
+
+                                $scope.user.patch({
+                                    'password':{
+                                        'password':$scope.hashed_password,
+                                        'password_updated':new Date()
+                                    }
+                                }).then(function(response){
+                                    // this callback will be called asynchronously
+                                    // when the response is available
+
+                                    //console.log("===after patch=====");
+                                    //console.log(response);
+                                    var html = '<b>your password has been changed</b>';
+                                    var e =$compile(html)($scope);
+                                    $element.replaceWith(e);
+                                    $timeout(function(){
+                                        $location.path('/login');
+                                    },2000);
+
+
+                                });
                             });
-                            $timeout(function() {
-                                interestsAlert.hide();
-                            }, 5000);
-                        })
-                        .error(function(data, status, headers, config) {
-                            //console.log("====error of interests", data.data)
-                        });
-                    },2000);
+                        }).
+                        error(function(error) {
+                            // called asynchronously if an error occurs
+                            // or server returns response with an error status.
+                            var html = '<b>your email does not exist, Please check it once..</b>';
+                            var e =$compile(html)($scope);
+                            $element.replaceWith(e);
+                    });
                 }
-
-            });
-        });
-    });'use strict';
-
-/**
- * @ngdoc function
- * @name weberApp.controller:EmailCtrl
- * @description
- * # EmailCtrl
- * Controller of the weberApp
- */
-angular.module('weberApp')
-	.controller('EmailCtrl', function($http, $timeout, $route, Restangular, $scope, $auth, $alert, $location, $routeParams) {
-
-        Restangular.one('people',$routeParams.objectId).get({seed:Math.random()}).then(function(user) {
-              $scope.user = user;
-              if($routeParams.rand_string == $scope.user.random_string){
-                if($scope.user.email_confirmed == true){
-                    $scope.user_email_confirmed = "your email is already activated";
-                    $location.path('/home');
-                    return;
-                }
-                $scope.user.patch({
-                        email_confirmed : true
-                },{},{'If-Match': $scope.user._etag}).then(function(response){
-                        var interestsAlert = $alert({
-                            title: 'Success',
-                            content: 'Email Confirmed',
-                            placement: 'top',
-                            type: 'success',
-                            show: true
-                        });
-                        $timeout(function() {
-                            interestsAlert.hide();
-                        }, 5000);
-                        $timeout(function(){
-                            $location.path('/home');
-                        })
-                });
-              }
-        });
-    });'use strict';
-
-/**
- * @ngdoc function
- * @name weberApp.controller:FriendsCtrl
- * @description
- * # FriendsCtrl
- * Controller of the weberApp
- */
-angular.module('weberApp')
-  .controller('FriendsCtrl', function($scope, $auth, Restangular, InterestsService,
-                InfinitePosts, $alert, $http, CurrentUser, UserService, $rootScope) {
-		$scope.UserService = UserService;
-		$scope.InterestsService = InterestsService;
-		$http.get('/api/me', {
-			headers: {
-				'Content-Type': 'application/json'
-			}
-		}).success(function(user_id) {
-
-		    var embedded = '{"send_add_requests":1}';
-			Restangular.one('people',JSON.parse(user_id)).get({ embeddded: embedded, seed:Math.random()}).then(function(user) {
-
-                $scope.suggested_people = [];
-				$scope.user = user;
-				$scope.show_only_profile_pic = true;
-                $scope.show_only_p_user_pic = false;
-
-                if (user.friends.length !== 0) {
-				    var params = '{"_id": {"$in":["'+($scope.user.friends).join('", "') + '"'+']}}';
-					Restangular.all('people').getList({where :params}).then(function(friend) {
-					   // console.log('===friends====')
-					   // console.log(friend)
-						$scope.friends = friend;
-					});
-				}
-                // getting suggested friends
-
-                 //console.log('before request', $rootScope.currentUser)
-                 var req = {
-
-                        method: 'POST',
-                        url: '/api/suggestedFriends',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        data: {
-                            location: $rootScope.currentUser['location']['state'],
-                            friends: $rootScope.currentUser['friends'],
-                            username: $rootScope.currentUser['username'],
-                            _id: $rootScope.currentUser['_id'],
-                            seed: Math.random()
-                        }
-                 }
-                 $http(req).then(function(data){
-                     //console.log('-----------at suggested people', data)
-                     if(data.data.status != false){
-                        //console.log("user suggestion", data.data.data)
-                        $scope.suggested_people = data.data.data;
-                        //console.log($scope.suggested_people)
-                     }
-                 })
-
-
-
-			});
-		});
-
-		$scope.filterFunction = function(element) {
-            return element.name.match(/^$scope.searchFriend/) ? true : false;
+            }
         };
-	});'use strict';
+    });'use strict';
+
 /**
  * @ngdoc function
- * @name weberApp.controller:MainCtrl
+ * @name weberApp.controller:UserprofileCtrl
  * @description
- * # MainCtrl
+ * # UserprofileCtrl
  * Controller of the weberApp
  */
 angular.module('weberApp')
-	.controller('PostLoadController', function($http, $auth, InterestsService, Restangular, $scope,
-	                                           $routeParams, PostService, InfinitePosts,MatchButtonService) {
+	.controller('UserprofileCtrl', function($scope, $routeParams,$templateCache, sortIListService, questions,
+	                                        Restangular, InfinitePosts, UserService,MatchButtonService,$rootScope,
+	                                        CurrentUser, InterestsService, friendsActivity) {
 
-	    $scope.postid = $routeParams.postid;
-	    $scope.MatchButtonService = MatchButtonService;
-	    $scope.InterestsService = InterestsService;
-	    $http.get('/api/me', {
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': $auth.getToken()
-			}
-		}).success(function(user_id) {
-			Restangular.one('people',JSON.parse(user_id)).get({seed:Math.random()}).then(function(user) {
+		$scope.UserService = UserService;
+		$scope.MatchButtonService = MatchButtonService;
+		$scope.sortIListService = sortIListService;
+		$scope.InterestsService = InterestsService;
+		$scope.show_only_profile_pic = false;
+        $scope.show_only_p_user_pic = true;
+        $scope.show_c_user_info = false;
+        $scope.show_p_user_info = true;
 
-                $scope.user = user;
-				var loadPostIds = angular.copy(user.friends);
+        Restangular.one('people', $routeParams.username).get({ seed : Math.random()}).then(function(profileuser) {
+    		// profile user information
+	    	$scope.profileuser = profileuser;
+            // questions section functions
+            $scope.questions = new questions(profileuser);
+            //$scope.questions.getcquestions();
+            $scope.questions.getUserQuestions();
 
-                if (user.friends.length !== 0) {
+            if ( $scope.profileuser.friends.length !== 0) {
+                var params = '{"_id": {"$in":["'+($scope.profileuser.friends).join('", "') + '"'+']}}'
+                Restangular.all('people').getList({
+                    where:params,
+                    seed:Math.random()
+                }).then(function(friends) {
+                    $scope.friends = friends;
+                });
+            }
 
-				    var params = '{"_id": {"$in":["'+($scope.user.friends).join('", "') + '"'+']}}';
+            var loadPostIds = [];
+            loadPostIds.push(profileuser._id);
+            loadPostIds = "[\"" + loadPostIds.join("\",\"") + "\"]";
+            $scope.infinitePosts = new InfinitePosts($scope.profileuser, loadPostIds);
+            $scope.infinitePosts.getEarlyPosts();
 
-					Restangular.all('people').getList({where :params}).then(function(friend) {
-						$scope.friends = friend;
-					});
-				}
+            $scope.checkAnswer = function(question_id){
+                data = $scope.questions.checkAnswer(question_id);
+                return data;
+            }
 
-				$scope.infinitePosts = new InfinitePosts(user, []);
-				$scope.infinitePosts.getSpecificPost($routeParams);
+             $scope.answered = function(question, ans){
+                 $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
+                 //console.log(question, ans)
+             }
 
-                $scope.confirm_delete = function(){
-                    $scope.infinitePosts.deletePost($scope.infinitePosts.posts[0], user);
+
+
+
+        // end of profile user information
+        if($rootScope.currentUser === 'undefined'){
+            $http.get('/api/me', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': $auth.getToken()
                 }
+            }).success(function(user_id) {
+                var params = '{"send_add_requests":1}';
+                Restangular.one('people',JSON.parse(user_id)).get({embedded:params, seed: Math.random()}).then(function(user) {
+                    $rootScope.currentUser = user;
+                    questionOperations();
+                });
+            });
 
-                $scope.pushToPost = function(postauthor, postid){
-                    var posts = $scope.infinitePosts.posts;
+        }else{
+            //console.log('else part user', $rootScope.currentUser)
+            questionOperations();
+        }
 
-                    for(var temp in posts){
-                        if(posts[temp]._id == postid){
-                            var iPeople = posts[temp].interestedPeople;
-                            for(var i in iPeople){
-                                if(iPeople[i].interested_person == user._id){
-                                    return true;
-                                }
+
+        function questionOperations(){
+
+            $scope.checkYouAnswered = function(question_id){
+                data = $scope.questions.checkYouAnswered(question_id, $rootScope.currentUser);
+                return data;
+            }
+
+            $scope.youAnswered = function(question, ans){
+                //console.log('------------->>> user id', $rootScope.currentUser._id);
+                $scope.questions.updateUser2(question, ans, $rootScope.currentUser._id);
+                //console.log(question, ans)
+            }
+             // end of questions section
+            if($rootScope.currentUser._id !== $scope.profileuser._id){
+                var friendsactivity = new friendsActivity($rootScope.currentUser, $scope.profileuser);
+                //console.log(friendsactivity)
+                $scope.check_relation = function(){
+                    $scope.relation = friendsactivity.getRelation();
+                    return $scope.relation;
+                }
+            }
+
+            $scope.pushToPost = function(postauthor, postid){
+                //console.log('match user id', user._id)
+                var posts = $scope.infinitePosts.posts;
+                for(var temp in posts){
+                    if(posts[temp]._id == postid){
+                        postauthor = posts[temp].author;
+                        postid = posts[temp]._id;
+
+                        var iPeople = posts[temp].interestedPeople;
+                        for(var i in iPeople){
+                            if(iPeople[i].interested_person == $rootScope.currentUser._id){
+                                return true;
                             }
-                            iPeople.push({'interested_person': user._id, 'match_date': new Date()});
-                            //console.log('post author-->', postauthor)
-                            //console.log('postauthor-->', postauthor)
-                            //console.log('postid -->', postid)
-                            //console.log('user id-->', user._id)
-                            MatchButtonService.match(postauthor, postid , user._id).then(function(data){
-                                //console.log('match agree succesfully-->', data);
-                            });
-
                         }
-                    }
-	            }
+                        iPeople.push({'interested_person': $rootScope.currentUser._id, 'match_date': new Date()});
+                        //console.log('post author-->', postauthor)
+                        MatchButtonService.match(postauthor, postid , $rootScope.currentUser._id).then(function(data){
+                            //console.log('match agree succesfully-->', data);
+                        });
 
-                $scope.deleteFromPost = function(postauthor, postid){
-
-                    //console.log('unmatch user id', user._id)
-                    var posts = $scope.infinitePosts.posts;
-
-                    for(var temp in posts){
-                        // if post contains with post id
-                        if(posts[temp]._id == postid){
-                            var iPeople = posts[temp].interestedPeople;
-                            for(var i in iPeople){
-                                if(iPeople[i].interested_person == user._id){
-                                   iPeople.splice(i,1);
-                                   MatchButtonService.unmatch(postauthor, postid, user._id).then(function(data){
-                                        //console.log('unmatch disagree succesfully-->', data);
-                                   });
-                                }
-                            }
-
-                        }
                     }
                 }
+            }
 
+            $scope.deleteFromPost = function(postauthor, postid){
 
-			});
-		});
+                //console.log('unmatch user id', user._id)
+                var posts = $scope.infinitePosts.posts;
 
-	});/*'use strict';
+                for(var temp in posts){
+                    // if post contains with post id
+                    if(posts[temp]._id == postid){
+                        var iPeople = posts[temp].interestedPeople;
+                        for(var i in iPeople){
+                            if(iPeople[i].interested_person == $rootScope.currentUser._id){
+                               iPeople.splice(i,1);
+                               MatchButtonService.unmatch(postauthor, postid, $rootScope.currentUser._id).then(function(data){
+                                    //console.log('unmatch disagree succesfully-->', data);
+                               });
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+    });
+});/*'use strict';
 
 /**
  * @ngdoc function
@@ -342,126 +277,6 @@ angular.module('weberApp')
         }
     }
 });*/
-'use strict';
-
-/**
- * @ngdoc function
- * @name weberApp.controller:WeberSearchCtrl
- * @description
- * # WeberSearchCtrl
- * Controller of the weberApp
- */
-angular.module('weberApp')
-    .controller('WeberSearchCtrl', function($scope, $timeout, $q, $auth, Restangular,$route,$window, InterestsService,
-	 										InfinitePosts, $alert, $http,$location,$socket,
-	 										CurrentUser, UserService,CurrentUser1,$rootScope,
-	 										SearchActivity, $routeParams, MatchMeResults) {
-	 	$scope.show_no_results = false;
-	 	$scope.searched = false;
-	 	$scope.UserService = UserService;
-	 	$scope.InterestsService = InterestsService;
-	 	if(typeof $rootScope.currentUser === 'undefined'){
-            $http.get('/api/me', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': $auth.getToken()
-                }
-            }).success(function(user_id) {
-                var params = '{"send_add_requests":1}';
-                Restangular.one('people',JSON.parse(user_id)).get({embedded:params, seed: Math.random()}).then(function(user) {
-
-
-                    $rootScope.currentUser = user;
-                    //$rootScope.temp_user = user;
-                    if($rootScope.currentUser.interests.length == 0 &&
-                        $rootScope.currentUser.questions.length < 4){
-
-                       $location.path("/enter_interests")
-                    }
-
-                    //console.log($scope.currentUser);
-                    $scope.searchActivity = new SearchActivity($rootScope.currentUser);
-                    $scope.searchActivity.getMysearches();
-                    store_search_text($routeParams.query);
-
-                });
-            });
-
-        }else{
-            if($rootScope.currentUser.interests.length == 0 &&
-                $rootScope.currentUser.questions.length < 4){
-                $location.path("/enter_interests")
-            }
-            //console.log($scope.currentUser);
-            $scope.searchActivity = new SearchActivity($scope.currentUser);
-            $scope.searchActivity.getMysearches();
-            store_search_text($routeParams.query);
-        }
-
-        // delete search history item
-        $scope.delete_searchHistoryItem = function(id){
-            $scope.delete_searchHistory = $timeout(function(){
-                $scope.searchActivity.deleteItem(id);
-            },2000);
-        }
-
-        $scope.perfomSearch = function(){
-            $scope.load_data = $timeout(function(){
-                $scope.search = true;
-                if($scope.present_search_query == $scope.query) return;
-                if($scope.query){
-                    //alredy present searched query no need to search again
-                    $location.search('query', $scope.query);
-                    $scope.matchResults = new MatchMeResults($scope.query, $scope.location);
-                    $scope.matchResults.newSearchResults();
-                    if($scope.isAuthenticated()){
-                        store_search_text($scope.query);
-                    }
-                }
-                $scope.present_search_query = $scope.query;
-                $timeout(function(){
-                    $scope.show_no_results = true;
-                },6000);
-            },3000);
-        }
-
-        $scope.storequestion = function(){
-            var question = $scope.enterquestion;
-            $scope.enterquestion = null;
-            Restangular.all('questions').post({
-                'question':question
-            }).then(function(data){
-                //console.log('questions posted',data)
-            });
-        }
-
-        $scope.go = function(query){
-            console.log("query", query);
-            $scope.query = query;
-            $scope.perfomSearch($scope.query);
-        }
-
-        function combine_ids(ids) {
-   				return (ids.length ? "\"" + ids.join("\",\"") + "\"" : "");
-		}
-
-        if($routeParams.query){
-            $scope.search = $routeParams.query;
-            $scope.query = $routeParams.query;
-            $scope.matchResults = new MatchMeResults($routeParams.query,$scope.location);
-            $scope.matchResults.newSearchResults();
-            $scope.searched=true;
-        }
-
-        function store_search_text(searchText){
-            if(searchText){
-                $scope.searchActivity.addSearchText(searchText);
-            }
-        }
- 	});
-
-
-
 'use strict';
 
 /**
@@ -906,271 +721,6 @@ angular.module('weberApp')
 
         }
     }]);'use strict';
-
-/**
- * @ngdoc function
- * @name weberApp.controller:SignupCtrl
- * @description
- * # SignupCtrl
- * Controller of the weberApp
- */
-angular.module('weberApp')
-	.controller('SignupCtrl', function($scope, $http, $auth, $location, $alert) {
-		$scope.searched = false;
-	 	$scope.searchBusy = false;
-
-
-	 	$scope.tags = [];
-
-
-
-        $scope.loadTags = function(query) {
-        //return $http.get('/tags?query=' + query);
-        };
-
-        $scope.tagAdded = function(tag) {
-            //console.log('Tag added: ', tag.text);
-            //$scope.tags.push(tag)
-            //alert(tag.text)
-        };
-
-        $scope.tagRemoved = function(tag) {
-           // console.log('Tag removed: ', tag);
-            //console.log($scope.tags)
-        };
-
-        /* starting code of signup goes here */
-
-            /*$scope.registerUser = function() {
-                if (this.formData.gender) {
-
-                var self = this;
-                var interests = [];
-                var querystring = "";
-                for(var temp in $scope.tags){
-                    interests.push($scope.tags[temp].text.toString());
-                    querystring = querystring+$scope.tags[temp].text+" ";
-                }
-                $http.get('/api/similarwords',
-                    {
-                        headers:{'Content-Type':'application/json'},
-                        params : {querystring: querystring.toString() }
-                    }).success(function(interestsSimilarWords) {
-                        //console.log('successdata', interestsSimilarWords)
-                        var data = ['d','i','dd'];
-                        $scope.signup_Busy = $auth.signup({
-                            email: $scope.formData.email,
-                            password: $scope.formData.password,
-                            firstname: $scope.formData.firstname,
-                            lastname: $scope.formData.lastname,
-                            username: $scope.formData.firstname+$scope.formData.lastname,
-                            gender: self.formData.gender,
-                            interests: interests,
-                            interestsimilarwords: interestsSimilarWords
-                        }).then(function (response) {
-
-                            $location.path('/email_details/' + self.formData.email);
-                        }, function (signuperror) {
-                            $scope.signUpError = signuperror;
-                        });
-                    });
-            }else{
-                    $scope.gendererror = true;
-                }
-            };*/
-
-        /* ending of signup code */
-	}).directive('validPasswordC', function () {
-		return {
-			require: 'ngModel',
-			link: function (scope, elm, attrs, ctrl) {
-				ctrl.$parsers.unshift(function (viewValue, $scope) {
-					var noMatch = viewValue != scope.myForm.password.$viewValue;
-					ctrl.$setValidity('noMatch', !noMatch);
-				})
-			}
-		}
-	})
-	.directive('replacesignup', function ($compile) {
-		return {
-			restrict: 'E',
-			replace: true,
-			link: function (scope, element, attrs) {
-				element.click(function(){
-				   var html ='<image src="/static/app/images/pleasewait.gif" style="width:;">';
-				   var e =$compile(html)(scope);
-				   element.replaceWith(e);
-				});
-			}
-		};
-	});'use strict';
-/**
- * @ngdoc function
- * @name weberApp.controller:MainCtrl
- * @description
- * # MainCtrl
- * Controller of the weberApp
- */
-angular.module('weberApp')
-	.controller('MainCtrl', function($scope, $timeout, $auth, $rootScope, $socket, Restangular, InfinitePosts,questions,
-	                                $alert, $http, CurrentUser,sortIListService, InterestsService,$location,
-	                                UserService, fileUpload, MatchButtonService) {
-
-	    $scope.show_none_posts = false;
-	    $scope.load_main = $timeout(function(){
-            $timeout(function(){
-                $scope.show_none_posts = true;
-            },4000);
-            $scope.UserService = UserService;
-            $scope.MatchButtonService = MatchButtonService;
-            $scope.sortIListService = sortIListService;
-            $scope.InterestsService = InterestsService;
-            //console.log("====interests service", $scope.InterestsService)
-            $http.get('/api/me', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': $auth.getToken()
-                }
-            }).success(function(user_id) {
-                //console.log('authorize token', $auth.getToken())
-                Restangular.one('people',JSON.parse(user_id)).get({seed:Math.random()},{'Authorization': $auth.getToken()}).then(function(user) {
-                    //console.log('user==>', user)
-                    $rootScope.currentUser = user;
-
-
-                    // checking enter minimum interests
-                    if($rootScope.currentUser.interests.length == 0 && $rootScope.currentUser.questions.length < 4){
-                        //console.log('interests length', $rootScope.currentUser.questions.length, $rootScope.currentUser.interests.length)
-                        $location.path("/enter_interests")
-                    }
-
-
-
-                    //delete the post from infinite posts of the current user
-                    function checkdeletepost(post_id){
-                        var status = false;
-                        var post = null;
-                        for(var k in $scope.infinitePosts.posts){
-                            if($scope.infinitePosts.posts[k]._id == post_id &&
-                                $scope.infinitePosts.posts[k].author == $rootScope.currentUser._id){
-                                    status = true;
-                                    post =  $scope.infinitePosts.posts[k];
-                                }
-                        }
-                        return ({status:status, post:post});
-                    }
-                    $scope.confirm_delete = function(get_post_id){
-                        var result = checkdeletepost(get_post_id);
-                        if(result.status){
-                            $scope.infinitePosts.deletePost(result.post);
-                        }
-                    }
-                    // questions section functions
-                    $scope.questions = new questions($rootScope.currentUser);
-                    $scope.questions.getallquestions();
-
-
-                    $scope.answered = function(question, ans){
-                        $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
-                        //console.log(question, ans)
-                    }
-
-                    $scope.checkAnswer = function(question_id){
-                        data = $scope.questions.checkAnswer(question_id);
-                        return data;
-                    }
-                    // end of questions section
-                    var loadPostIds = angular.copy($rootScope.currentUser.friends);
-                    loadPostIds.push($rootScope.currentUser._id);
-                    loadPostIds = "[\"" + loadPostIds.join("\",\"") + "\"]";
-
-                    $scope.infinitePosts = new InfinitePosts($rootScope.currentUser, loadPostIds);
-                    $scope.infinitePosts.getEarlyPosts();
-
-                    $scope.submit_post = function(){
-                         if($scope.new_post) {
-                            $scope.new_submit_busy_post = $http({
-                                url: '/api/simwords',
-                                method: "GET",
-                                params: {querystring: $scope.new_post}
-                            })
-                                .success(function (similarwords) {
-
-                                    $scope.infinitePosts.addPost($scope.new_post, similarwords, $rootScope.server_file_path);
-                                    $scope.new_post = '';
-                                });
-
-                        }else{
-                            return false;
-                        }
-                    };
-                    $socket.on('postNotifications', function(data){
-
-                        if(data.data.postnotific){
-                            if($rootScope.currentUser.friends.indexOf(data.author) == -1){
-                                //console.log('no a friend')
-                            }else if($rootScope.currentUser.friends.indexOf(data.author != -1) && data.postid != 'undefined'){
-                                $scope.infinitePosts.loadNotificPost(data.postid, data.author);
-                            }else{
-                                //console.log('nothing to do')
-                            }
-                        }
-                    });
-
-                    $scope.pushToPost = function(postauthor, postid){
-                        //console.log('match user id', user._id)
-                        var index = null;
-                        var posts = $scope.infinitePosts.posts;
-                        for(var temp in posts){
-                            if(posts[temp]._id == postid){
-                                index = temp;
-                                postauthor = posts[temp].author;
-                                postid = posts[temp]._id;
-
-                                var iPeople = posts[temp].interestedPeople;
-                                for(var i in iPeople){
-                                    if(iPeople[i].interested_person == $rootScope.currentUser._id){
-                                        return true;
-                                    }
-                                }
-                                iPeople.push({'interested_person': $rootScope.currentUser._id, 'match_date': new Date()});
-                                //console.log('post author-->', postauthor)
-                                MatchButtonService.match(postauthor, postid , $rootScope.currentUser._id).then(function(data){
-                                    //console.log('match agree succesfully-->', data);
-                                });
-
-                            }
-                        }
-                    }
-
-                    $scope.deleteFromPost = function(postauthor, postid){
-
-                        //console.log('unmatch user id', user._id)
-                        var posts = $scope.infinitePosts.posts;
-
-                        for(var temp in posts){
-                            // if post contains with post id
-                            if(posts[temp]._id == postid){
-                                var iPeople = posts[temp].interestedPeople;
-                                for(var i in iPeople){
-                                    if(iPeople[i].interested_person == $rootScope.currentUser._id){
-                                       iPeople.splice(i,1);
-                                       MatchButtonService.unmatch(postauthor, postid, $rootScope.currentUser._id).then(function(data){
-                                            //console.log('unmatch disagree succesfully-->', data);
-                                       });
-                                    }
-                                }
-
-                            }
-                        }
-                    }
-
-
-                });
-            });
-        },1000);
-	});
-'use strict';
 
 angular.module('weberApp')
     .controller('indexCtrl', function($auth,$scope, $window, CurrentUser,$route,$rootScope,
@@ -1938,170 +1488,420 @@ angular.module('weberApp')
     //end of CssJavascript code
 
 });'use strict';
-
 /**
  * @ngdoc function
- * @name weberApp.controller:ForgotPasswordCtrl
+ * @name weberApp.controller:MainCtrl
  * @description
- * # ForgotPasswordCtrl
+ * # MainCtrl
  * Controller of the weberApp
  */
 angular.module('weberApp')
-	.directive('passwordrecovery', function ($compile,$location, CurrentUser, Restangular, $routeParams, friendsActivity) {
-        return {
-            restrict: 'E',
-            replace: true,
-            link: function (scope, element, attrs) {},
-            controller:function($scope, $http, $element, $attrs, $transclude){
+	.controller('MainCtrl', function($scope, $timeout, $auth, $rootScope, $socket, Restangular, InfinitePosts,questions,
+	                                $alert, $http, CurrentUser,sortIListService, InterestsService,$location,
+	                                UserService, fileUpload, MatchButtonService) {
 
-                $scope.sendPassword = function(){
-
-                    $scope.password_recovery_busy = $http.post('/forgotpasswordlink', {email:$scope.email}).
-                        success(function(data, status, headers, config) {
-                            // this callback will be called asynchronously
-                            // when the response is available
-                            var html = '<b>password link has been sent to your email</b><br><p>Please check your email</p>';
-                            var e =$compile(html)($scope);
-                            $element.replaceWith(e);
-                        }).
-                        error(function(error) {
-                            // called asynchronously if an error occurs
-                            // or server returns response with an error status.
-                            var html = '<b>your email does not exist, Please check it once..</b>';
-                            var e =$compile(html)($scope);
-                            $element.replaceWith(e);
-                        });
-
-
+	    $scope.show_none_posts = false;
+	    $scope.load_main = $timeout(function(){
+            $timeout(function(){
+                $scope.show_none_posts = true;
+            },4000);
+            $scope.UserService = UserService;
+            $scope.MatchButtonService = MatchButtonService;
+            $scope.sortIListService = sortIListService;
+            $scope.InterestsService = InterestsService;
+            //console.log("====interests service", $scope.InterestsService)
+            $http.get('/api/me', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': $auth.getToken()
                 }
-            }
-        };
-    })
-    .directive('changepassworddirective', function ($compile, $location, $timeout, CurrentUser, Restangular, $routeParams, friendsActivity) {
-        return {
-            restrict: 'E',
-            replace: true,
-            link: function (scope, element, attrs) {},
-            controller:function($scope, $http, $element, $attrs, $transclude, $routeParams){
-
-                var user_name = $routeParams.user_name;
-                var password_random_string = $routeParams.password_random_string;
-
-                console.log(user_name+password_random_string);
-
-                $scope.passwordButton = function(){
-
-                    $scope.new_password = $http.post('/get_new_hash_password', {
-                            user_name:$routeParams.user_name,
-                            new_password:$scope.formData.password
-                        })
-                        .success(function(data, status, headers, config) {
-                            //console.log("========hashed password======");
-                            //console.log(data);
-                            $scope.hashed_password = data;
-
-                            var Update_Password = Restangular.one('people', $routeParams.user_name).get({seed:Math.random()});
-
-                            Update_Password.then(function(response){
-                                $scope.user = response;
-
-                                //console.log("=====user details===");
-                                //console.log($scope.user);
-
-                                $scope.user.patch({
-                                    'password':{
-                                        'password':$scope.hashed_password,
-                                        'password_updated':new Date()
-                                    }
-                                }).then(function(response){
-                                    // this callback will be called asynchronously
-                                    // when the response is available
-
-                                    //console.log("===after patch=====");
-                                    //console.log(response);
-                                    var html = '<b>your password has been changed</b>';
-                                    var e =$compile(html)($scope);
-                                    $element.replaceWith(e);
-                                    $timeout(function(){
-                                        $location.path('/login');
-                                    },2000);
+            }).success(function(user_id) {
+                //console.log('authorize token', $auth.getToken())
+                Restangular.one('people',JSON.parse(user_id)).get({seed:Math.random()},{'Authorization': $auth.getToken()}).then(function(user) {
+                    //console.log('user==>', user)
+                    $rootScope.currentUser = user;
 
 
+                    // checking enter minimum interests
+                    if($rootScope.currentUser.interests.length == 0 && $rootScope.currentUser.questions.length < 4){
+                        //console.log('interests length', $rootScope.currentUser.questions.length, $rootScope.currentUser.interests.length)
+                        $location.path("/enter_interests")
+                    }
+
+
+
+                    //delete the post from infinite posts of the current user
+                    function checkdeletepost(post_id){
+                        var status = false;
+                        var post = null;
+                        for(var k in $scope.infinitePosts.posts){
+                            if($scope.infinitePosts.posts[k]._id == post_id &&
+                                $scope.infinitePosts.posts[k].author == $rootScope.currentUser._id){
+                                    status = true;
+                                    post =  $scope.infinitePosts.posts[k];
+                                }
+                        }
+                        return ({status:status, post:post});
+                    }
+                    $scope.confirm_delete = function(get_post_id){
+                        var result = checkdeletepost(get_post_id);
+                        if(result.status){
+                            $scope.infinitePosts.deletePost(result.post);
+                        }
+                    }
+                    // questions section functions
+                    $scope.questions = new questions($rootScope.currentUser);
+                    $scope.questions.getallquestions();
+
+
+                    $scope.answered = function(question, ans){
+                        $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
+                        //console.log(question, ans)
+                    }
+
+                    $scope.checkAnswer = function(question_id){
+                        data = $scope.questions.checkAnswer(question_id);
+                        return data;
+                    }
+                    // end of questions section
+                    var loadPostIds = angular.copy($rootScope.currentUser.friends);
+                    loadPostIds.push($rootScope.currentUser._id);
+                    loadPostIds = "[\"" + loadPostIds.join("\",\"") + "\"]";
+
+                    $scope.infinitePosts = new InfinitePosts($rootScope.currentUser, loadPostIds);
+                    $scope.infinitePosts.getEarlyPosts();
+
+                    $scope.submit_post = function(){
+                         if($scope.new_post) {
+                            $scope.new_submit_busy_post = $http({
+                                url: '/api/simwords',
+                                method: "GET",
+                                params: {querystring: $scope.new_post}
+                            })
+                                .success(function (similarwords) {
+
+                                    $scope.infinitePosts.addPost($scope.new_post, similarwords, $rootScope.server_file_path);
+                                    $scope.new_post = '';
                                 });
-                            });
-                        }).
-                        error(function(error) {
-                            // called asynchronously if an error occurs
-                            // or server returns response with an error status.
-                            var html = '<b>your email does not exist, Please check it once..</b>';
-                            var e =$compile(html)($scope);
-                            $element.replaceWith(e);
+
+                        }else{
+                            return false;
+                        }
+                    };
+                    $socket.on('postNotifications', function(data){
+
+                        if(data.data.postnotific){
+                            if($rootScope.currentUser.friends.indexOf(data.author) == -1){
+                                //console.log('no a friend')
+                            }else if($rootScope.currentUser.friends.indexOf(data.author != -1) && data.postid != 'undefined'){
+                                $scope.infinitePosts.loadNotificPost(data.postid, data.author);
+                            }else{
+                                //console.log('nothing to do')
+                            }
+                        }
                     });
+
+                    $scope.pushToPost = function(postauthor, postid){
+                        //console.log('match user id', user._id)
+                        var index = null;
+                        var posts = $scope.infinitePosts.posts;
+                        for(var temp in posts){
+                            if(posts[temp]._id == postid){
+                                index = temp;
+                                postauthor = posts[temp].author;
+                                postid = posts[temp]._id;
+
+                                var iPeople = posts[temp].interestedPeople;
+                                for(var i in iPeople){
+                                    if(iPeople[i].interested_person == $rootScope.currentUser._id){
+                                        return true;
+                                    }
+                                }
+                                iPeople.push({'interested_person': $rootScope.currentUser._id, 'match_date': new Date()});
+                                //console.log('post author-->', postauthor)
+                                MatchButtonService.match(postauthor, postid , $rootScope.currentUser._id).then(function(data){
+                                    //console.log('match agree succesfully-->', data);
+                                });
+
+                            }
+                        }
+                    }
+
+                    $scope.deleteFromPost = function(postauthor, postid){
+
+                        //console.log('unmatch user id', user._id)
+                        var posts = $scope.infinitePosts.posts;
+
+                        for(var temp in posts){
+                            // if post contains with post id
+                            if(posts[temp]._id == postid){
+                                var iPeople = posts[temp].interestedPeople;
+                                for(var i in iPeople){
+                                    if(iPeople[i].interested_person == $rootScope.currentUser._id){
+                                       iPeople.splice(i,1);
+                                       MatchButtonService.unmatch(postauthor, postid, $rootScope.currentUser._id).then(function(data){
+                                            //console.log('unmatch disagree succesfully-->', data);
+                                       });
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+
+                });
+            });
+        },1000);
+	});
+'use strict';
+/**
+ * @ngdoc function
+ * @name weberApp.controller:MainCtrl
+ * @description
+ * # MainCtrl
+ * Controller of the weberApp
+ */
+angular.module('weberApp')
+	.controller('PostLoadController', function($http, $auth, InterestsService, Restangular, $scope,
+	                                           $routeParams, PostService, InfinitePosts,MatchButtonService) {
+
+	    $scope.postid = $routeParams.postid;
+	    $scope.MatchButtonService = MatchButtonService;
+	    $scope.InterestsService = InterestsService;
+	    $http.get('/api/me', {
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': $auth.getToken()
+			}
+		}).success(function(user_id) {
+			Restangular.one('people',JSON.parse(user_id)).get({seed:Math.random()}).then(function(user) {
+
+                $scope.user = user;
+				var loadPostIds = angular.copy(user.friends);
+
+                if (user.friends.length !== 0) {
+
+				    var params = '{"_id": {"$in":["'+($scope.user.friends).join('", "') + '"'+']}}';
+
+					Restangular.all('people').getList({where :params}).then(function(friend) {
+						$scope.friends = friend;
+					});
+				}
+
+				$scope.infinitePosts = new InfinitePosts(user, []);
+				$scope.infinitePosts.getSpecificPost($routeParams);
+
+                $scope.confirm_delete = function(){
+                    $scope.infinitePosts.deletePost($scope.infinitePosts.posts[0], user);
                 }
-            }
+
+                $scope.pushToPost = function(postauthor, postid){
+                    var posts = $scope.infinitePosts.posts;
+
+                    for(var temp in posts){
+                        if(posts[temp]._id == postid){
+                            var iPeople = posts[temp].interestedPeople;
+                            for(var i in iPeople){
+                                if(iPeople[i].interested_person == user._id){
+                                    return true;
+                                }
+                            }
+                            iPeople.push({'interested_person': user._id, 'match_date': new Date()});
+                            //console.log('post author-->', postauthor)
+                            //console.log('postauthor-->', postauthor)
+                            //console.log('postid -->', postid)
+                            //console.log('user id-->', user._id)
+                            MatchButtonService.match(postauthor, postid , user._id).then(function(data){
+                                //console.log('match agree succesfully-->', data);
+                            });
+
+                        }
+                    }
+	            }
+
+                $scope.deleteFromPost = function(postauthor, postid){
+
+                    //console.log('unmatch user id', user._id)
+                    var posts = $scope.infinitePosts.posts;
+
+                    for(var temp in posts){
+                        // if post contains with post id
+                        if(posts[temp]._id == postid){
+                            var iPeople = posts[temp].interestedPeople;
+                            for(var i in iPeople){
+                                if(iPeople[i].interested_person == user._id){
+                                   iPeople.splice(i,1);
+                                   MatchButtonService.unmatch(postauthor, postid, user._id).then(function(data){
+                                        //console.log('unmatch disagree succesfully-->', data);
+                                   });
+                                }
+                            }
+
+                        }
+                    }
+                }
+
+
+			});
+		});
+
+	});'use strict';
+
+/**
+ * @ngdoc function
+ * @name weberApp.controller:SignupCtrl
+ * @description
+ * # SignupCtrl
+ * Controller of the weberApp
+ */
+angular.module('weberApp')
+	.controller('SignupCtrl', function($scope, $http, $auth, $location, $alert) {
+		$scope.searched = false;
+	 	$scope.searchBusy = false;
+
+
+	 	$scope.tags = [];
+
+
+
+        $scope.loadTags = function(query) {
+        //return $http.get('/tags?query=' + query);
         };
+
+        $scope.tagAdded = function(tag) {
+            //console.log('Tag added: ', tag.text);
+            //$scope.tags.push(tag)
+            //alert(tag.text)
+        };
+
+        $scope.tagRemoved = function(tag) {
+           // console.log('Tag removed: ', tag);
+            //console.log($scope.tags)
+        };
+
+        /* starting code of signup goes here */
+
+            /*$scope.registerUser = function() {
+                if (this.formData.gender) {
+
+                var self = this;
+                var interests = [];
+                var querystring = "";
+                for(var temp in $scope.tags){
+                    interests.push($scope.tags[temp].text.toString());
+                    querystring = querystring+$scope.tags[temp].text+" ";
+                }
+                $http.get('/api/similarwords',
+                    {
+                        headers:{'Content-Type':'application/json'},
+                        params : {querystring: querystring.toString() }
+                    }).success(function(interestsSimilarWords) {
+                        //console.log('successdata', interestsSimilarWords)
+                        var data = ['d','i','dd'];
+                        $scope.signup_Busy = $auth.signup({
+                            email: $scope.formData.email,
+                            password: $scope.formData.password,
+                            firstname: $scope.formData.firstname,
+                            lastname: $scope.formData.lastname,
+                            username: $scope.formData.firstname+$scope.formData.lastname,
+                            gender: self.formData.gender,
+                            interests: interests,
+                            interestsimilarwords: interestsSimilarWords
+                        }).then(function (response) {
+
+                            $location.path('/email_details/' + self.formData.email);
+                        }, function (signuperror) {
+                            $scope.signUpError = signuperror;
+                        });
+                    });
+            }else{
+                    $scope.gendererror = true;
+                }
+            };*/
+
+        /* ending of signup code */
+	}).directive('validPasswordC', function () {
+		return {
+			require: 'ngModel',
+			link: function (scope, elm, attrs, ctrl) {
+				ctrl.$parsers.unshift(function (viewValue, $scope) {
+					var noMatch = viewValue != scope.myForm.password.$viewValue;
+					ctrl.$setValidity('noMatch', !noMatch);
+				})
+			}
+		}
+	})
+	.directive('replacesignup', function ($compile) {
+		return {
+			restrict: 'E',
+			replace: true,
+			link: function (scope, element, attrs) {
+				element.click(function(){
+				   var html ='<image src="/static/app/images/pleasewait.gif" style="width:;">';
+				   var e =$compile(html)(scope);
+				   element.replaceWith(e);
+				});
+			}
+		};
+	});'use strict';
+
+/**
+ * @ngdoc function
+ * @name weberApp.controller:EmailCtrl
+ * @description
+ * # EmailCtrl
+ * Controller of the weberApp
+ */
+angular.module('weberApp')
+	.controller('EmailCtrl', function($http, $timeout, $route, Restangular, $scope, $auth, $alert, $location, $routeParams) {
+
+        Restangular.one('people',$routeParams.objectId).get({seed:Math.random()}).then(function(user) {
+              $scope.user = user;
+              if($routeParams.rand_string == $scope.user.random_string){
+                if($scope.user.email_confirmed == true){
+                    $scope.user_email_confirmed = "your email is already activated";
+                    $location.path('/home');
+                    return;
+                }
+                $scope.user.patch({
+                        email_confirmed : true
+                },{},{'If-Match': $scope.user._etag}).then(function(response){
+                        var interestsAlert = $alert({
+                            title: 'Success',
+                            content: 'Email Confirmed',
+                            placement: 'top',
+                            type: 'success',
+                            show: true
+                        });
+                        $timeout(function() {
+                            interestsAlert.hide();
+                        }, 5000);
+                        $timeout(function(){
+                            $location.path('/home');
+                        })
+                });
+              }
+        });
     });'use strict';
 
 /**
  * @ngdoc function
- * @name weberApp.controller:UserprofileCtrl
+ * @name weberApp.controller:WeberSearchCtrl
  * @description
- * # UserprofileCtrl
+ * # WeberSearchCtrl
  * Controller of the weberApp
  */
 angular.module('weberApp')
-	.controller('UserprofileCtrl', function($scope, $routeParams,$templateCache, sortIListService, questions,
-	                                        Restangular, InfinitePosts, UserService,MatchButtonService,$rootScope,
-	                                        CurrentUser, InterestsService, friendsActivity) {
-
-		$scope.UserService = UserService;
-		$scope.MatchButtonService = MatchButtonService;
-		$scope.sortIListService = sortIListService;
-		$scope.InterestsService = InterestsService;
-		$scope.show_only_profile_pic = false;
-        $scope.show_only_p_user_pic = true;
-        $scope.show_c_user_info = false;
-        $scope.show_p_user_info = true;
-
-        Restangular.one('people', $routeParams.username).get({ seed : Math.random()}).then(function(profileuser) {
-    		// profile user information
-	    	$scope.profileuser = profileuser;
-            // questions section functions
-            $scope.questions = new questions(profileuser);
-            //$scope.questions.getcquestions();
-            $scope.questions.getUserQuestions();
-
-            if ( $scope.profileuser.friends.length !== 0) {
-                var params = '{"_id": {"$in":["'+($scope.profileuser.friends).join('", "') + '"'+']}}'
-                Restangular.all('people').getList({
-                    where:params,
-                    seed:Math.random()
-                }).then(function(friends) {
-                    $scope.friends = friends;
-                });
-            }
-
-            var loadPostIds = [];
-            loadPostIds.push(profileuser._id);
-            loadPostIds = "[\"" + loadPostIds.join("\",\"") + "\"]";
-            $scope.infinitePosts = new InfinitePosts($scope.profileuser, loadPostIds);
-            $scope.infinitePosts.getEarlyPosts();
-
-            $scope.checkAnswer = function(question_id){
-                data = $scope.questions.checkAnswer(question_id);
-                return data;
-            }
-
-             $scope.answered = function(question, ans){
-                 $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
-                 //console.log(question, ans)
-             }
-
-
-
-
-        // end of profile user information
-        if($rootScope.currentUser === 'undefined'){
+    .controller('WeberSearchCtrl', function($scope, $timeout, $q, $auth, Restangular,$route,$window, InterestsService,
+	 										InfinitePosts, $alert, $http,$location,$socket,
+	 										CurrentUser, UserService,CurrentUser1,$rootScope,
+	 										SearchActivity, $routeParams, MatchMeResults) {
+	 	$scope.show_no_results = false;
+	 	$scope.searched = false;
+	 	$scope.UserService = UserService;
+	 	$scope.InterestsService = InterestsService;
+	 	if(typeof $rootScope.currentUser === 'undefined'){
             $http.get('/api/me', {
                 headers: {
                     'Content-Type': 'application/json',
@@ -2110,631 +1910,287 @@ angular.module('weberApp')
             }).success(function(user_id) {
                 var params = '{"send_add_requests":1}';
                 Restangular.one('people',JSON.parse(user_id)).get({embedded:params, seed: Math.random()}).then(function(user) {
+
+
                     $rootScope.currentUser = user;
-                    questionOperations();
+                    //$rootScope.temp_user = user;
+                    if($rootScope.currentUser.interests.length == 0 &&
+                        $rootScope.currentUser.questions.length < 4){
+
+                       $location.path("/enter_interests")
+                    }
+
+                    //console.log($scope.currentUser);
+                    $scope.searchActivity = new SearchActivity($rootScope.currentUser);
+                    $scope.searchActivity.getMysearches();
+                    store_search_text($routeParams.query);
+
                 });
             });
 
         }else{
-            //console.log('else part user', $rootScope.currentUser)
-            questionOperations();
+            if($rootScope.currentUser.interests.length == 0 &&
+                $rootScope.currentUser.questions.length < 4){
+                $location.path("/enter_interests")
+            }
+            //console.log($scope.currentUser);
+            $scope.searchActivity = new SearchActivity($scope.currentUser);
+            $scope.searchActivity.getMysearches();
+            store_search_text($routeParams.query);
         }
 
-
-        function questionOperations(){
-
-            $scope.checkYouAnswered = function(question_id){
-                data = $scope.questions.checkYouAnswered(question_id, $rootScope.currentUser);
-                return data;
-            }
-
-            $scope.youAnswered = function(question, ans){
-                //console.log('------------->>> user id', $rootScope.currentUser._id);
-                $scope.questions.updateUser2(question, ans, $rootScope.currentUser._id);
-                //console.log(question, ans)
-            }
-             // end of questions section
-            if($rootScope.currentUser._id !== $scope.profileuser._id){
-                var friendsactivity = new friendsActivity($rootScope.currentUser, $scope.profileuser);
-                //console.log(friendsactivity)
-                $scope.check_relation = function(){
-                    $scope.relation = friendsactivity.getRelation();
-                    return $scope.relation;
-                }
-            }
-
-            $scope.pushToPost = function(postauthor, postid){
-                //console.log('match user id', user._id)
-                var posts = $scope.infinitePosts.posts;
-                for(var temp in posts){
-                    if(posts[temp]._id == postid){
-                        postauthor = posts[temp].author;
-                        postid = posts[temp]._id;
-
-                        var iPeople = posts[temp].interestedPeople;
-                        for(var i in iPeople){
-                            if(iPeople[i].interested_person == $rootScope.currentUser._id){
-                                return true;
-                            }
-                        }
-                        iPeople.push({'interested_person': $rootScope.currentUser._id, 'match_date': new Date()});
-                        //console.log('post author-->', postauthor)
-                        MatchButtonService.match(postauthor, postid , $rootScope.currentUser._id).then(function(data){
-                            //console.log('match agree succesfully-->', data);
-                        });
-
-                    }
-                }
-            }
-
-            $scope.deleteFromPost = function(postauthor, postid){
-
-                //console.log('unmatch user id', user._id)
-                var posts = $scope.infinitePosts.posts;
-
-                for(var temp in posts){
-                    // if post contains with post id
-                    if(posts[temp]._id == postid){
-                        var iPeople = posts[temp].interestedPeople;
-                        for(var i in iPeople){
-                            if(iPeople[i].interested_person == $rootScope.currentUser._id){
-                               iPeople.splice(i,1);
-                               MatchButtonService.unmatch(postauthor, postid, $rootScope.currentUser._id).then(function(data){
-                                    //console.log('unmatch disagree succesfully-->', data);
-                               });
-                            }
-                        }
-
-                    }
-                }
-            }
-        }
-    });
-});angular.module('weberApp')
-.factory('friendsActivity', function($http, Restangular, $alert, $timeout,CurrentUser) {
-
-        var friendsActivity = function(currentuser, profileuser){
-            //console.log(profileuser)
-            this.currentuser = currentuser;
-            this.profileuser = profileuser;
-            this.status = null;
-            this.status_method = null;
-
-            if (typeof this.profileuser.notifications === "undefined"){
-                profileuser.patch({
-                    "notifications": []
-                })
-            }
-
-            if(typeof this.currentuser.notifications === "undefined"){
-                currentuser.patch({
-                    "notifications": []
-                })
-            }
+        // delete search history item
+        $scope.delete_searchHistoryItem = function(id){
+            $scope.delete_searchHistory = $timeout(function(){
+                $scope.searchActivity.deleteItem(id);
+            },2000);
         }
 
-
-
-        friendsActivity.prototype.getRelation = function(){
-
-                if(this.status === null){
-                    if(this.profileuser.friends.indexOf(this.currentuser._id) > -1){
-                        this.status = 'unfriend';
+        $scope.perfomSearch = function(){
+            $scope.load_data = $timeout(function(){
+                $scope.search = true;
+                if($scope.present_search_query == $scope.query) return;
+                if($scope.query){
+                    //alredy present searched query no need to search again
+                    $location.search('query', $scope.query);
+                    $scope.matchResults = new MatchMeResults($scope.query, $scope.location);
+                    $scope.matchResults.newSearchResults();
+                    if($scope.isAuthenticated()){
+                        store_search_text($scope.query);
                     }
                 }
-
-                if(this.status === null){
-                    var k = '';
-                    for (k in this.profileuser.notifications){
-                        if((this.profileuser.notifications[k].friendid == (this.currentuser._id)) &&
-                          (this.profileuser.notifications[k].notific_type == 1)){
-                            this.status = 'cancelrequest';
-                        }
-                    }
-                }
-
-                if(this.status === null){
-                    var k = ''
-                    for (k in this.currentuser.notifications){
-                        if((this.currentuser.notifications[k].friendid == (this.profileuser._id)) &&
-                           (this.currentuser.notifications[k].notific_type == 1))
-                        {
-                            this.status = 'reject_accept';
-                        }
-                    }
-                }
-
-                if(this.status === null){
-                    this.status = 'addfriend';
-                }
-            return (this.status);
+                $scope.present_search_query = $scope.query;
+                $timeout(function(){
+                    $scope.show_no_results = true;
+                },6000);
+            },3000);
         }
 
-         return friendsActivity;
-	})
-	.service('Friends', function($http, Restangular) {
-
-		this.addFriend = function(cuserid, puserid) {
-		    return Restangular.one('addfriend').get({
-		        cuserid : cuserid,
-		        puserid : puserid,
-		        seed:Math.random()
-		    });
-		}
-
-		this.cancelRequest = function(cuserid, puserid){
-		    //console.log(cuserid, puserid)
-		    return Restangular.one('cancelfriend').get({
-		        cuserid : cuserid,
-		        puserid : puserid,
-		        seed:Math.random()
-		    });
-
-		}
-
-		this.acceptRequest = function(cuserid, puserid){
-		    return Restangular.one('acceptfriend').get({
-		        cuserid : cuserid,
-		        puserid : puserid,
-		        seed:Math.random()
-		    });
-
-		}
-
-		this.rejectRequest = function(cuserid, puserid){
-		    return Restangular.one('rejectfriend').get({
-		        cuserid : cuserid,
-		        puserid : puserid,
-		        seed : Math.random()
-		    });
-		}
-
-		this.unFreind = function(cuserid, puserid){
-		    return Restangular.one('unfriend').get({
-		        cuserid : cuserid,
-		        puserid : puserid,
-		        seed : Math.random()
-		    });
-		}
-
-		this.makeSeen = function(cuserid){
-		    return Restangular.one('makeseen').get({
-		        cuserid : cuserid,
-		        seed : Math.random()
-		    });
-		}
-	});angular.module('weberApp')
-
-    .factory('ChatActivity', function($http, Restangular,$auth, UserService) {
-
-        var ChatActivity = function(currentuser){
-            this.currentuser = currentuser;
-            this.chatfriends = [];
-            this._etag = currentuser._etag;
-            this.messages = [];
-            this.messageNotifc = [];
-            this.latestMessages = [];
-            this.conversations = [];
-
-            // for infinity scroll parameters
-            this.pages =[];
-            this.busy = false;
-            this.end = false;
-            this.query = null;
-            this.embedded_param = null;
-            this.main_params = null;
-            this.updateseenmessages = [];
-        }
-
-
-        // sending message
-        ChatActivity.prototype.sendMessage = function( receiverid, text){
-
-            this.receiverid = receiverid;
-            self = this;
-            Restangular.all('chat/sendmessage').post({
-                'sender':this.currentuser._id,
-                'receiver': this.receiverid,
-                'message': text,
-                'seen': false
+        $scope.storequestion = function(){
+            var question = $scope.enterquestion;
+            $scope.enterquestion = null;
+            Restangular.all('questions').post({
+                'question':question
             }).then(function(data){
-                //console.log(data)
+                //console.log('questions posted',data)
             });
         }
 
-        // return specific user page count and key
-        function getKey_Pages(pages, recept){
+        $scope.go = function(query){
+            console.log("query", query);
+            $scope.query = query;
+            $scope.perfomSearch($scope.query);
+        }
 
-             var temp_pages = null;
-             var key = null;
-             var found = false;
+        function combine_ids(ids) {
+   				return (ids.length ? "\"" + ids.join("\",\"") + "\"" : "");
+		}
 
-             if(pages.length){
-                for(var k in pages){
-                    if(pages[k].id == recept){
-                        temp_pages = pages[k];
-                        key = k;
-                        found = true;
-                        return ({'pageinfo':temp_pages, 'key':key});
-                    }
-                }
+        if($routeParams.query){
+            $scope.search = $routeParams.query;
+            $scope.query = $routeParams.query;
+            $scope.matchResults = new MatchMeResults($routeParams.query,$scope.location);
+            $scope.matchResults.newSearchResults();
+            $scope.searched=true;
+        }
 
-                if(!(found)){
-                    // if person not found push into array
-                    pages.push({
-                        id:recept,
-                        page:1,
-                        end: false
+        function store_search_text(searchText){
+            if(searchText){
+                $scope.searchActivity.addSearchText(searchText);
+            }
+        }
+ 	});
+
+
+
+'use strict';
+
+/**
+ * @ngdoc function
+ * @name weberApp.controller:EmailDetailsCtrl
+ * @description
+ * # EmailDetailsCtrl
+ * Controller of the weberApp
+ */
+angular.module('weberApp')
+	.controller('enterInterestsCtrl', function($timeout, questions, InterestsService, $http,
+	 Restangular, $scope, $auth, $alert, $location, $routeParams, $rootScope) {
+
+        //var element = $routeParams.userId;
+        //console.log(element)
+        $scope.email = $routeParams.email;
+        //console.log($scope.user);
+        $scope.show_interests = true;
+        $scope.show_questions = false;
+        $scope.final_interests_array = [];
+
+        $scope.$watchCollection('data.tags',function(val){
+            $scope.final_interests_array = val;
+        });
+
+        $http.get('/api/me', {
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': $auth.getToken()
+			}
+		}).success(function(userId) {
+            Restangular.one('people', JSON.parse(userId)).get({seed:Math.random()}).then(function(user) {
+                $rootScope.currentUser = user;
+                if($rootScope.currentUser.email_confirmed == false){
+                    var userNameAlert = $alert({
+                        title: 'Thanks for Registering: ',
+                        content: 'Your email is not confirmed',
+                        placement: 'top-left',
+                        type: 'danger',
+                        show: true
                     });
-                   temp_pages = pages[pages.length-1];
-                   //console.log('pushed when not found', pages)
-                   return ({'pageinfo':pages[pages.length-1], 'key': pages.length-1});
-
                 }
-            }
-            // no chat room open push first page
-            else{
-                //console.log('first page')
-                pages.push({
-                    id:recept,
-                    page:1,
-                    end: false
-                });
-                return ({'pageinfo': pages[0], 'key':0});
-            }
-        }
 
-        ChatActivity.prototype.loadMessages = function(user1, user2, roomdetails){
-
-            var self = this;
-
-            this.busy = true;
-            var page = null;
-            var key = null;
-
-            self.messages.push.apply(self.messages,[{id:user2,details:roomdetails,messages:[]}]);
-
-            self.main_params =  '{ "$or" : ['+
-                    '{ "$and" : [ { "sender" : "'+user1+'" }, { "receiver" : "'+user2+'" } ] },'+
-                    '{ "$and" : [ { "sender" : "'+user2+'" }, { "receiver": "'+user1+'" }  ] }'+
-                ']}';
-
-            self.embedded_param = '{"sender":1,"receiver":1}';
-            var data = getKey_Pages(self.pages, user2);
-            page = data.pageinfo;
-            key = data.key;
-            Restangular.all('messages').getList({
-                where:self.main_params,
-                embedded:self.embedded_param,
-                seed:Math.random(),
-                max_results: 10,
-                page:page.page,
-                sort: '[("message_created",-1)]',
-            }).then(function(response){
-				if (response.length < 10) {
-					page.end = true;
-				}
-
-				self.messages = PushMessages(self.messages, response, user2)
-
-				self.busy = false;
-				page.page = page.page+1;
-				self.pages[key] = page;
-            }.bind(self));
-        }
-
-        // push message in messages array after next page called
-        function PushMessages(allMessages, newMessages, recept){
-            for(var k in allMessages){
-                if(allMessages[k].id == recept){
-                   //console.log('all one messages', allMessages[k].messages)
-                   allMessages[k].messages.push.apply(allMessages[k].messages, newMessages);
-                   //console.log('after all one messages', allMessages[k].messages)
-
-
+                $scope.afterFinishQuestions = function(){
+                    $location.path('/home');
                 }
-            }
-            return allMessages;
-        }
+                // questions section functions
+                $scope.questions = new questions(user);
+                $scope.questions.getallquestions();
 
-        ChatActivity.prototype.nextPage = function(user2) {
-			if (this.busy | this.end) return;
-			var self = this;
-			self.busy = true;
-            var page = null;
-            var key = null;
-            var data = getKey_Pages(self.pages, user2);
-            page = data.pageinfo;
-            key = data.key;
-            var user1 = self.currentuser._id;
-			self.main_params =  '{ "$or" : ['+
-                    '{ "$and" : [ { "sender" : "'+user1+'" }, { "receiver" : "'+user2+'" } ] },'+
-                    '{ "$and" : [ { "sender" : "'+user2+'" }, { "receiver": "'+user1+'" }  ] }'+
-                ']}';
+                $scope.answered = function(question, ans){
 
-            self.embedded_param = '{"sender":1,"receiver":1}';
-			Restangular.all('messages').getList({
-			    where:self.main_params,
-                embedded:self.embedded_param,
-                seed:Math.random(),
-                max_results: 10,
-                page:page.page,
-                sort: '[("message_created",-1)]'
-			}).then(function(posts) {
-				if (posts.length === 0) {
-					page.end = true;
-				}
-                self.messages = PushMessages(self.messages, posts, user2)
-                page.page = page.page + 1;
-				self.pages[key] = page;
-				self.busy = false;
-			}.bind(self));
-		};
-
-        ChatActivity.prototype.pushMessage = function(receiverid, message){
-            for(var k in this.messages){
-                if(this.messages[k].id == receiverid){
-                   this.messages[k].messages.unshift(message);
-                }
-            }
-        }
-
-        ChatActivity.prototype.pushLatestMessage = function(msg){
-            this.messageNotifc.push.apply(this.messageNotifc,[msg]);
-           // console.log(this.messageNotifc)
-        }
-
-        ChatActivity.prototype.getMessageNotifcations= function(){
-            var where_param = '{"$and":[{"receiver":"'+this.currentuser._id+'"},{"seen":false}]}';
-            //var sort_param = '[("_created",-1)]';
-            var embedded_param = '{"sender":1,"receiver":1}';
-            var self = this;
-            Restangular.all('messages').getList({
-                where: where_param,
-                embedded: embedded_param,
-                seed:Math.random()
-            }).then(function(data){
-                self.messageNotifc.push.apply(self.messageNotifc, data);
-            }.bind(self))
-        }
-
-
-
-        ChatActivity.prototype.loadLatestMessages = function(){
-            //console.log('load latest')
-            var params = null;
-            var getResults = false;
-           // console.log(getResults)
-
-            params =  '{ "receiver" : "'+this.currentuser._id+'" }';
-
-            if(this.messageNotifc.length){
-                //console.log('yess message notification length not zero')
-                params = '{ "$and" : [ { "timestamp":{"$gte": '+this.currentuser.lastmessageseen +' }},'+
-                                       '{ "receiver" : "'+this.currentuser._id+'" }, { "seen" : '+false+' } ] }';
-                getResults = true;
-            }else if(!(this.latestMessages.length)){
-                getResults = true;
-            }else{}
-
-
-            var sort_param = '[("message_created",-1)]';
-            var embedded_param = '{"sender":1,"receiver":1}';
-            var self = this;
-
-            //console.log(params)
-            if(getResults){
-                Restangular.all('updatetimestamp').post({
-                    timestamp:self.currentuser.lastmessageseen,
-                    userid:self.currentuser._id
-                }).then(function(data){
-                    //console.log(data)
-                });
-
-                Restangular.all('messages').getList({
-                    where: params,
-                    embedded: embedded_param,
-                    sort:sort_param,
-                    max_results: 100,
-                    seed:Math.random()
-                }).then(function(data){
-
-                    // getting distinct message notifications
-                    var data2 = [];
-                    data2.push.apply(data2,data);
-                    var distinctMessages = [];
-
-                    for(var temp in data2){
-
-                        // update seen true messages
-                        this.updateseenmessages.push.apply(this.updateseenmessages, data);
-                        // distinct arry empty then push
-                        if(distinctMessages.length == 0){
-                            distinctMessages.push(data2[temp]);
+                    for(var temp in $rootScope.currentUser.questions){
+                        if($rootScope.currentUser.questions[temp].questionid == question){
+                            $rootScope.currentUser.questions[temp].answer = ans;
+                            $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
+                            return;
                         }
-                        // else check in array then push
-                        else{
-                            for(var k in distinctMessages){
-                                if(data2[temp].receiver._id == distinctMessages[k].receiver._id){
-                                    //console.log('alredy pushed')
-                                }
-                                else{
-                                    distinctMessages.push(data2[temp]);
-                                }
-                            }
-
-                        }
-
                     }
 
+                    $rootScope.currentUser.questions.push({'questionid':question, 'answer': ans});
+                    //console.log('pushed answereds', $rootScope.currentUser.questions)
+                    $scope.questions.updateAnswer(question, ans, $rootScope.currentUser._id);
+                    return;
+                }
 
-                    self.latestMessages.push.apply(self.latestMessages, distinctMessages);
-                    if(self.messageNotifc.length){
-                        self.makeMessagesSeen(self.latestMessages);
-                        self.messageNotifc = [];
+                $scope.checkAnswer = function(question_id){
+                    data = $scope.questions.checkAnswer(question_id);
+                    return data;
+                }
+                // end of questions section
+
+                if($rootScope.currentUser.interests.length){
+                    // success show
+                    $scope.show_interests = false;
+                    $scope.show_questions = true;
+                }
+                else{
+                    // success hide
+                    $scope.show_interests = true;
+                    $scope.show_questions = false;
+                }
+                $scope.newUserInterests = function(){
+                    for(var temp in $rootScope.currentUser.interests){
+                        $scope.final_interests_array.push(InterestsService.get($rootScope.currentUser.interests[temp]).interest_string)
                     }
-
-                }.bind(self));
-            }
-
-        }
-
-        ChatActivity.prototype.makeMessagesSeen = function(latestMessages){
-            var messageids = [];
-            var self = this;
-            //console.log('makeMessagesSeen')
-            for(var x in this.updateseenmessages){
-                messageids.push(this.updateseenmessages[x]._id);
-            }
-            if(messageids.length){
-                Restangular.all('updateMessageSeen').post({
-                    messageids: messageids
-                }).then(function(data){
-                    //console.log('--------updated messages seen status----------')
-                    //console.log(data)
-                    self.updateseenmessages = [];
-                });
-
-            }
-        }
-
-        ChatActivity.prototype.makeRoomMessagesSeen = function(senderid){
-            var self = this;
-            for(k in self.latestMessages){
-                if(self.latestMessages[k].sender._id == senderid  &&
-                   self.latestMessages[k].receiver._id == self.currentuser._id &&
-                   self.latestMessages[k].seen == false
-                ){
-                    Restangular.one("messages",self.latestMessages[k]._id).patch(
-                        {seen:true},{},
+                    $scope.Interests_busy = $timeout(function() {
+                        $http.post('/get_interested_ids',
                         {
-                            'Content-Type': 'application/json',
-                            'If-Match': self.latestMessages[k]._etag,
-                            'Authorization': $auth.getToken()
-                        }).then(function(data){
-                            self.latestMessages.splice(k,1);
+                            interests: $scope.final_interests_array,
+                            username: $rootScope.currentUser.username
+                        })
+                        .success(function(data, status, headers, config) {
+                            //console.log("======return success of interests of ids",data);
+                            $rootScope.currentUser.interests = data.interests;
+                            $scope.show_interests = false;
+                            $scope.show_questions = true;
+                            var interestsAlert = $alert({
+                                title: 'Success',
+                                content: 'Updated your Interests',
+                                placement: 'top',
+                                type: 'success',
+                                show: true
+                            });
+                            $timeout(function() {
+                                interestsAlert.hide();
+                            }, 5000);
+                        })
+                        .error(function(data, status, headers, config) {
+                            //console.log("====error of interests", data.data)
                         });
+                    },2000);
                 }
-            }
-        }
 
-
-        ChatActivity.prototype.getChatFriends = function(){
-            if (this.currentuser.friends.length !== 0) {
-                this.chatfriends.push.apply(this.chatfriends,UserService.getListUsers(this.currentuser.friends));
-                //console.log('chat users =====>', data)
-                //this
-                /*var params = '{"_id": {"$in":["'+(this.currentuser.friends).join('", "') + '"'+']}}';
-
-                Restangular.all('people').getList({where :params, seed: Math.random()})
-                    .then(function(data){
-                        this.chatfriends.push.apply(this.chatfriends, data);
-                    }.bind(this));*/
-            }
-        };
-
-
-        ChatActivity.prototype.addToConversations = function(id){
-            if(this.currentuser.conversations.indexOf(id) == -1 &&
-               this.currentuser.friends.indexOf(id) == -1){
-                   this.currentuser.conversations.push(id);
-                   Restangular.one('addconversation').get({
-                    cuserid : this.currentuser._id,
-                    conversationid : id,
-                    seed:Math.random()
-                  }).then(function(data){
-                      //console.log('add conversation-->', data)
-                  }.bind(this));
-            }
-        }
-
-        ChatActivity.prototype.deleteConversation = function(id){
-            if(this.currentuser.conversations.indexOf(id) !== -1){
-               this.currentuser.conversations.splice(this.currentuser.conversations.indexOf(id),1);
-               for(var k in this.messages){
-                   if(this.messages[k].id == id){
-                        this.messages.splice(k, 1);
-                        break;
-                   }
-               }
-              Restangular.one('deleteconversation').get({
-		        cuserid : this.currentuser._id,
-		        conversationid : id,
-		        seed:Math.random()
-		      }).then(function(data){
-		          //console.log('delete conversation-->', data)
-		      }.bind(this));
-
-            }
-        }
-
-    return ChatActivity;
+            });
+        });
     });'use strict';
 
 /**
- * @ngdoc service
- * @name weberApp.weberService
+ * @ngdoc function
+ * @name weberApp.controller:FriendsCtrl
  * @description
- * # weberService
- * Service in the weberApp.
+ * # FriendsCtrl
+ * Controller of the weberApp
  */
 angular.module('weberApp')
-.factory('SettingsService', function($http, Restangular, $alert, $timeout,$auth, fileUpload) {
-
-		var SettingsService = function(fieldvalue, fieldname) {
-
-			this.fieldname = fieldname;
-			this.fieldvalue = fieldvalue;
-			this.userobj = [];
-
-			var data = $http.get('/api/me', {
-				headers: {
-					'Content-Type': 'application/json',
-					'Authorization':$auth.getToken()
-				}
-			}).success(function(userId) {
-				this.userId = userId;
-				var promise = Restangular.one('people',JSON.parse(userId)).get().then(function(user) {
-					this.userobj = user;
-					//console.log(this.userobj);
-				}.bind(this));
-				return promise;
-			}.bind(this));
-			return data;
-		};
-
-		SettingsService.prototype.updatefieldvalue = function(){
-
-		};
-
-		return SettingsService;
-	})/* ========= file upload services ========*/
-	.directive('fileModel', ['$parse', function ($parse) {
-		return {
-			restrict: 'A',
-			link: function(scope, element, attrs) {
-				var model = $parse(attrs.fileModel);
-				var modelSetter = model.assign;
-
-				element.bind('change', function(){
-					scope.$apply(function(){
-						modelSetter(scope, element[0].files[0]);
-					});
-				});
+  .controller('FriendsCtrl', function($scope, $auth, Restangular, InterestsService,
+                InfinitePosts, $alert, $http, CurrentUser, UserService, $rootScope) {
+		$scope.UserService = UserService;
+		$scope.InterestsService = InterestsService;
+		$http.get('/api/me', {
+			headers: {
+				'Content-Type': 'application/json'
 			}
-		};
-	}])
-	.service('fileUpload', ['$http', function ($http,$auth, $scope, Restangular) {
-		this.uploadFileToUrl = function(file, uploadUrl){
-			var fd = new FormData();
-			fd.append('file', file);
-			this.path_name = "";
-			return $http.post(uploadUrl, fd, {
-				transformRequest: angular.identity,
-				headers: {'Content-Type': undefined}
+		}).success(function(user_id) {
+
+		    var embedded = '{"send_add_requests":1}';
+			Restangular.one('people',JSON.parse(user_id)).get({ embeddded: embedded, seed:Math.random()}).then(function(user) {
+
+                $scope.suggested_people = [];
+				$scope.user = user;
+				$scope.show_only_profile_pic = true;
+                $scope.show_only_p_user_pic = false;
+
+                if (user.friends.length !== 0) {
+				    var params = '{"_id": {"$in":["'+($scope.user.friends).join('", "') + '"'+']}}';
+					Restangular.all('people').getList({where :params}).then(function(friend) {
+					   // console.log('===friends====')
+					   // console.log(friend)
+						$scope.friends = friend;
+					});
+				}
+                // getting suggested friends
+
+                 //console.log('before request', $rootScope.currentUser)
+                 var req = {
+
+                        method: 'POST',
+                        url: '/api/suggestedFriends',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        data: {
+                            location: $rootScope.currentUser['location']['state'],
+                            friends: $rootScope.currentUser['friends'],
+                            username: $rootScope.currentUser['username'],
+                            _id: $rootScope.currentUser['_id'],
+                            seed: Math.random()
+                        }
+                 }
+                 $http(req).then(function(data){
+                     //console.log('-----------at suggested people', data)
+                     if(data.data.status != false){
+                        //console.log("user suggestion", data.data.data)
+                        $scope.suggested_people = data.data.data;
+                        //console.log($scope.suggested_people)
+                     }
+                 })
+
+
+
 			});
-		}
-	}]);/*====== end of file upload services ======*/'use strict';
+		});
+
+		$scope.filterFunction = function(element) {
+            return element.name.match(/^$scope.searchFriend/) ? true : false;
+        };
+	});'use strict';
 /**
  * @ngdoc service
  * @name weberApp.weberService
@@ -3599,6 +3055,550 @@ angular.module('weberApp')
 		}*/
 		return MatchMeResults;
 	});angular.module('weberApp')
+.factory('friendsActivity', function($http, Restangular, $alert, $timeout,CurrentUser) {
+
+        var friendsActivity = function(currentuser, profileuser){
+            //console.log(profileuser)
+            this.currentuser = currentuser;
+            this.profileuser = profileuser;
+            this.status = null;
+            this.status_method = null;
+
+            if (typeof this.profileuser.notifications === "undefined"){
+                profileuser.patch({
+                    "notifications": []
+                })
+            }
+
+            if(typeof this.currentuser.notifications === "undefined"){
+                currentuser.patch({
+                    "notifications": []
+                })
+            }
+        }
+
+
+
+        friendsActivity.prototype.getRelation = function(){
+
+                if(this.status === null){
+                    if(this.profileuser.friends.indexOf(this.currentuser._id) > -1){
+                        this.status = 'unfriend';
+                    }
+                }
+
+                if(this.status === null){
+                    var k = '';
+                    for (k in this.profileuser.notifications){
+                        if((this.profileuser.notifications[k].friendid == (this.currentuser._id)) &&
+                          (this.profileuser.notifications[k].notific_type == 1)){
+                            this.status = 'cancelrequest';
+                        }
+                    }
+                }
+
+                if(this.status === null){
+                    var k = ''
+                    for (k in this.currentuser.notifications){
+                        if((this.currentuser.notifications[k].friendid == (this.profileuser._id)) &&
+                           (this.currentuser.notifications[k].notific_type == 1))
+                        {
+                            this.status = 'reject_accept';
+                        }
+                    }
+                }
+
+                if(this.status === null){
+                    this.status = 'addfriend';
+                }
+            return (this.status);
+        }
+
+         return friendsActivity;
+	})
+	.service('Friends', function($http, Restangular) {
+
+		this.addFriend = function(cuserid, puserid) {
+		    return Restangular.one('addfriend').get({
+		        cuserid : cuserid,
+		        puserid : puserid,
+		        seed:Math.random()
+		    });
+		}
+
+		this.cancelRequest = function(cuserid, puserid){
+		    //console.log(cuserid, puserid)
+		    return Restangular.one('cancelfriend').get({
+		        cuserid : cuserid,
+		        puserid : puserid,
+		        seed:Math.random()
+		    });
+
+		}
+
+		this.acceptRequest = function(cuserid, puserid){
+		    return Restangular.one('acceptfriend').get({
+		        cuserid : cuserid,
+		        puserid : puserid,
+		        seed:Math.random()
+		    });
+
+		}
+
+		this.rejectRequest = function(cuserid, puserid){
+		    return Restangular.one('rejectfriend').get({
+		        cuserid : cuserid,
+		        puserid : puserid,
+		        seed : Math.random()
+		    });
+		}
+
+		this.unFreind = function(cuserid, puserid){
+		    return Restangular.one('unfriend').get({
+		        cuserid : cuserid,
+		        puserid : puserid,
+		        seed : Math.random()
+		    });
+		}
+
+		this.makeSeen = function(cuserid){
+		    return Restangular.one('makeseen').get({
+		        cuserid : cuserid,
+		        seed : Math.random()
+		    });
+		}
+	});angular.module('weberApp')
+
+    .factory('ChatActivity', function($http, Restangular,$auth, UserService) {
+
+        var ChatActivity = function(currentuser){
+            this.currentuser = currentuser;
+            this.chatfriends = [];
+            this._etag = currentuser._etag;
+            this.messages = [];
+            this.messageNotifc = [];
+            this.latestMessages = [];
+            this.conversations = [];
+
+            // for infinity scroll parameters
+            this.pages =[];
+            this.busy = false;
+            this.end = false;
+            this.query = null;
+            this.embedded_param = null;
+            this.main_params = null;
+            this.updateseenmessages = [];
+        }
+
+
+        // sending message
+        ChatActivity.prototype.sendMessage = function( receiverid, text){
+
+            this.receiverid = receiverid;
+            self = this;
+            Restangular.all('chat/sendmessage').post({
+                'sender':this.currentuser._id,
+                'receiver': this.receiverid,
+                'message': text,
+                'seen': false
+            }).then(function(data){
+                //console.log(data)
+            });
+        }
+
+        // return specific user page count and key
+        function getKey_Pages(pages, recept){
+
+             var temp_pages = null;
+             var key = null;
+             var found = false;
+
+             if(pages.length){
+                for(var k in pages){
+                    if(pages[k].id == recept){
+                        temp_pages = pages[k];
+                        key = k;
+                        found = true;
+                        return ({'pageinfo':temp_pages, 'key':key});
+                    }
+                }
+
+                if(!(found)){
+                    // if person not found push into array
+                    pages.push({
+                        id:recept,
+                        page:1,
+                        end: false
+                    });
+                   temp_pages = pages[pages.length-1];
+                   //console.log('pushed when not found', pages)
+                   return ({'pageinfo':pages[pages.length-1], 'key': pages.length-1});
+
+                }
+            }
+            // no chat room open push first page
+            else{
+                //console.log('first page')
+                pages.push({
+                    id:recept,
+                    page:1,
+                    end: false
+                });
+                return ({'pageinfo': pages[0], 'key':0});
+            }
+        }
+
+        ChatActivity.prototype.loadMessages = function(user1, user2, roomdetails){
+
+            var self = this;
+
+            this.busy = true;
+            var page = null;
+            var key = null;
+
+            self.messages.push.apply(self.messages,[{id:user2,details:roomdetails,messages:[]}]);
+
+            self.main_params =  '{ "$or" : ['+
+                    '{ "$and" : [ { "sender" : "'+user1+'" }, { "receiver" : "'+user2+'" } ] },'+
+                    '{ "$and" : [ { "sender" : "'+user2+'" }, { "receiver": "'+user1+'" }  ] }'+
+                ']}';
+
+            self.embedded_param = '{"sender":1,"receiver":1}';
+            var data = getKey_Pages(self.pages, user2);
+            page = data.pageinfo;
+            key = data.key;
+            Restangular.all('messages').getList({
+                where:self.main_params,
+                embedded:self.embedded_param,
+                seed:Math.random(),
+                max_results: 10,
+                page:page.page,
+                sort: '[("message_created",-1)]',
+            }).then(function(response){
+				if (response.length < 10) {
+					page.end = true;
+				}
+
+				self.messages = PushMessages(self.messages, response, user2)
+
+				self.busy = false;
+				page.page = page.page+1;
+				self.pages[key] = page;
+            }.bind(self));
+        }
+
+        // push message in messages array after next page called
+        function PushMessages(allMessages, newMessages, recept){
+            for(var k in allMessages){
+                if(allMessages[k].id == recept){
+                   //console.log('all one messages', allMessages[k].messages)
+                   allMessages[k].messages.push.apply(allMessages[k].messages, newMessages);
+                   //console.log('after all one messages', allMessages[k].messages)
+
+
+                }
+            }
+            return allMessages;
+        }
+
+        ChatActivity.prototype.nextPage = function(user2) {
+			if (this.busy | this.end) return;
+			var self = this;
+			self.busy = true;
+            var page = null;
+            var key = null;
+            var data = getKey_Pages(self.pages, user2);
+            page = data.pageinfo;
+            key = data.key;
+            var user1 = self.currentuser._id;
+			self.main_params =  '{ "$or" : ['+
+                    '{ "$and" : [ { "sender" : "'+user1+'" }, { "receiver" : "'+user2+'" } ] },'+
+                    '{ "$and" : [ { "sender" : "'+user2+'" }, { "receiver": "'+user1+'" }  ] }'+
+                ']}';
+
+            self.embedded_param = '{"sender":1,"receiver":1}';
+			Restangular.all('messages').getList({
+			    where:self.main_params,
+                embedded:self.embedded_param,
+                seed:Math.random(),
+                max_results: 10,
+                page:page.page,
+                sort: '[("message_created",-1)]'
+			}).then(function(posts) {
+				if (posts.length === 0) {
+					page.end = true;
+				}
+                self.messages = PushMessages(self.messages, posts, user2)
+                page.page = page.page + 1;
+				self.pages[key] = page;
+				self.busy = false;
+			}.bind(self));
+		};
+
+        ChatActivity.prototype.pushMessage = function(receiverid, message){
+            for(var k in this.messages){
+                if(this.messages[k].id == receiverid){
+                   this.messages[k].messages.unshift(message);
+                }
+            }
+        }
+
+        ChatActivity.prototype.pushLatestMessage = function(msg){
+            this.messageNotifc.push.apply(this.messageNotifc,[msg]);
+           // console.log(this.messageNotifc)
+        }
+
+        ChatActivity.prototype.getMessageNotifcations= function(){
+            var where_param = '{"$and":[{"receiver":"'+this.currentuser._id+'"},{"seen":false}]}';
+            //var sort_param = '[("_created",-1)]';
+            var embedded_param = '{"sender":1,"receiver":1}';
+            var self = this;
+            Restangular.all('messages').getList({
+                where: where_param,
+                embedded: embedded_param,
+                seed:Math.random()
+            }).then(function(data){
+                self.messageNotifc.push.apply(self.messageNotifc, data);
+            }.bind(self))
+        }
+
+
+
+        ChatActivity.prototype.loadLatestMessages = function(){
+            //console.log('load latest')
+            var params = null;
+            var getResults = false;
+           // console.log(getResults)
+
+            params =  '{ "receiver" : "'+this.currentuser._id+'" }';
+
+            if(this.messageNotifc.length){
+                //console.log('yess message notification length not zero')
+                params = '{ "$and" : [ { "timestamp":{"$gte": '+this.currentuser.lastmessageseen +' }},'+
+                                       '{ "receiver" : "'+this.currentuser._id+'" }, { "seen" : '+false+' } ] }';
+                getResults = true;
+            }else if(!(this.latestMessages.length)){
+                getResults = true;
+            }else{}
+
+
+            var sort_param = '[("message_created",-1)]';
+            var embedded_param = '{"sender":1,"receiver":1}';
+            var self = this;
+
+            //console.log(params)
+            if(getResults){
+                Restangular.all('updatetimestamp').post({
+                    timestamp:self.currentuser.lastmessageseen,
+                    userid:self.currentuser._id
+                }).then(function(data){
+                    //console.log(data)
+                });
+
+                Restangular.all('messages').getList({
+                    where: params,
+                    embedded: embedded_param,
+                    sort:sort_param,
+                    max_results: 100,
+                    seed:Math.random()
+                }).then(function(data){
+
+                    // getting distinct message notifications
+                    var data2 = [];
+                    data2.push.apply(data2,data);
+                    var distinctMessages = [];
+
+                    for(var temp in data2){
+
+                        // update seen true messages
+                        this.updateseenmessages.push.apply(this.updateseenmessages, data);
+                        // distinct arry empty then push
+                        if(distinctMessages.length == 0){
+                            distinctMessages.push(data2[temp]);
+                        }
+                        // else check in array then push
+                        else{
+                            for(var k in distinctMessages){
+                                if(data2[temp].receiver._id == distinctMessages[k].receiver._id){
+                                    //console.log('alredy pushed')
+                                }
+                                else{
+                                    distinctMessages.push(data2[temp]);
+                                }
+                            }
+
+                        }
+
+                    }
+
+
+                    self.latestMessages.push.apply(self.latestMessages, distinctMessages);
+                    if(self.messageNotifc.length){
+                        self.makeMessagesSeen(self.latestMessages);
+                        self.messageNotifc = [];
+                    }
+
+                }.bind(self));
+            }
+
+        }
+
+        ChatActivity.prototype.makeMessagesSeen = function(latestMessages){
+            var messageids = [];
+            var self = this;
+            //console.log('makeMessagesSeen')
+            for(var x in this.updateseenmessages){
+                messageids.push(this.updateseenmessages[x]._id);
+            }
+            if(messageids.length){
+                Restangular.all('updateMessageSeen').post({
+                    messageids: messageids
+                }).then(function(data){
+                    //console.log('--------updated messages seen status----------')
+                    //console.log(data)
+                    self.updateseenmessages = [];
+                });
+
+            }
+        }
+
+        ChatActivity.prototype.makeRoomMessagesSeen = function(senderid){
+            var self = this;
+            for(k in self.latestMessages){
+                if(self.latestMessages[k].sender._id == senderid  &&
+                   self.latestMessages[k].receiver._id == self.currentuser._id &&
+                   self.latestMessages[k].seen == false
+                ){
+                    Restangular.one("messages",self.latestMessages[k]._id).patch(
+                        {seen:true},{},
+                        {
+                            'Content-Type': 'application/json',
+                            'If-Match': self.latestMessages[k]._etag,
+                            'Authorization': $auth.getToken()
+                        }).then(function(data){
+                            self.latestMessages.splice(k,1);
+                        });
+                }
+            }
+        }
+
+
+        ChatActivity.prototype.getChatFriends = function(){
+            if (this.currentuser.friends.length !== 0) {
+                this.chatfriends.push.apply(this.chatfriends,UserService.getListUsers(this.currentuser.friends));
+                //console.log('chat users =====>', data)
+                //this
+                /*var params = '{"_id": {"$in":["'+(this.currentuser.friends).join('", "') + '"'+']}}';
+
+                Restangular.all('people').getList({where :params, seed: Math.random()})
+                    .then(function(data){
+                        this.chatfriends.push.apply(this.chatfriends, data);
+                    }.bind(this));*/
+            }
+        };
+
+
+        ChatActivity.prototype.addToConversations = function(id){
+            if(this.currentuser.conversations.indexOf(id) == -1 &&
+               this.currentuser.friends.indexOf(id) == -1){
+                   this.currentuser.conversations.push(id);
+                   Restangular.one('addconversation').get({
+                    cuserid : this.currentuser._id,
+                    conversationid : id,
+                    seed:Math.random()
+                  }).then(function(data){
+                      //console.log('add conversation-->', data)
+                  }.bind(this));
+            }
+        }
+
+        ChatActivity.prototype.deleteConversation = function(id){
+            if(this.currentuser.conversations.indexOf(id) !== -1){
+               this.currentuser.conversations.splice(this.currentuser.conversations.indexOf(id),1);
+               for(var k in this.messages){
+                   if(this.messages[k].id == id){
+                        this.messages.splice(k, 1);
+                        break;
+                   }
+               }
+              Restangular.one('deleteconversation').get({
+		        cuserid : this.currentuser._id,
+		        conversationid : id,
+		        seed:Math.random()
+		      }).then(function(data){
+		          //console.log('delete conversation-->', data)
+		      }.bind(this));
+
+            }
+        }
+
+    return ChatActivity;
+    });'use strict';
+
+/**
+ * @ngdoc service
+ * @name weberApp.weberService
+ * @description
+ * # weberService
+ * Service in the weberApp.
+ */
+angular.module('weberApp')
+.factory('SettingsService', function($http, Restangular, $alert, $timeout,$auth, fileUpload) {
+
+		var SettingsService = function(fieldvalue, fieldname) {
+
+			this.fieldname = fieldname;
+			this.fieldvalue = fieldvalue;
+			this.userobj = [];
+
+			var data = $http.get('/api/me', {
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization':$auth.getToken()
+				}
+			}).success(function(userId) {
+				this.userId = userId;
+				var promise = Restangular.one('people',JSON.parse(userId)).get().then(function(user) {
+					this.userobj = user;
+					//console.log(this.userobj);
+				}.bind(this));
+				return promise;
+			}.bind(this));
+			return data;
+		};
+
+		SettingsService.prototype.updatefieldvalue = function(){
+
+		};
+
+		return SettingsService;
+	})/* ========= file upload services ========*/
+	.directive('fileModel', ['$parse', function ($parse) {
+		return {
+			restrict: 'A',
+			link: function(scope, element, attrs) {
+				var model = $parse(attrs.fileModel);
+				var modelSetter = model.assign;
+
+				element.bind('change', function(){
+					scope.$apply(function(){
+						modelSetter(scope, element[0].files[0]);
+					});
+				});
+			}
+		};
+	}])
+	.service('fileUpload', ['$http', function ($http,$auth, $scope, Restangular) {
+		this.uploadFileToUrl = function(file, uploadUrl){
+			var fd = new FormData();
+			fd.append('file', file);
+			this.path_name = "";
+			return $http.post(uploadUrl, fd, {
+				transformRequest: angular.identity,
+				headers: {'Content-Type': undefined}
+			});
+		}
+	}]);/*====== end of file upload services ======*/angular.module('weberApp')
 
 .filter('reverse', function() {
   return function(items) {
