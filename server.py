@@ -28,6 +28,7 @@ class TokenAuth(TokenAuth):
         accounts = app.data.driver.db['people']
         return accounts.find_one({'token': token})
 
+
 app = Eve(__name__,static_url_path='/static')
 app.debug = True,
 

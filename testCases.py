@@ -14,7 +14,6 @@ class FlaskrTestCase(unittest.TestCase):
         self.app = Eve(settings = settings)
         self.app = server.app.test_client()
 
-
     """def tearDown(self):
         os.close(self.db_fd)
         os.unlink(server.app.config['DATABASE'])"""
