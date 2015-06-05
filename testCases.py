@@ -7,7 +7,7 @@ import  json
 import random
 from eve import Eve
 import settings
-from pymongo import MongoClient
+from mongoengine import connect
 
 class FlaskrTestCase(unittest.TestCase):
 
@@ -15,7 +15,7 @@ class FlaskrTestCase(unittest.TestCase):
         self.app = app
         self.app.config['TESTING'] = True
         self.app = self.app.test_client()
-        client = MongoClient('10.240.115.93', 27017)
+        connect('test', host='10.240.115.93', port=27017)
 
 
     """def tearDown(self):
