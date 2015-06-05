@@ -39,8 +39,12 @@ app.config.update(
 	MAIL_PORT=465,
 	MAIL_USE_SSL=True,
 	MAIL_USERNAME = 'team@theweber.in',
-	MAIL_PASSWORD = 'ashok@weber'
-	)
+	MAIL_PASSWORD = 'ashok@weber',
+    DATABASE='test',
+    USERNAME='test',
+    PASSWORD='test'
+)
+
 
 mail=Mail(app)
 socketio = SocketIO(app)
@@ -79,6 +83,8 @@ def login_required(f):
 @app.route('/auth/login', methods=['POST'])
 def login():
     accounts = app.data.driver.db['people']
+    print '------------login testing---------------'
+    print request.json['email']
     user = accounts.find_one({'email': request.json['email']})
     if not user:
         response = jsonify(error='Your email does not exist')
