@@ -5,13 +5,13 @@ import unittest
 import tempfile
 import  json
 import random
-from mongoengine import connect
+from eve import Eve
+import settings
 
 class FlaskrTestCase(unittest.TestCase):
 
     def setUp(self):
-        app.config['TESTING'] = True
-        app.config["DATABASE"] = 'test'
+        self.app = Eve(settings = settings)
         self.app = server.app.test_client()
 
 
