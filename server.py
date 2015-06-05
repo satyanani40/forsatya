@@ -690,7 +690,7 @@ def signup():
                 'password':generate_password_hash(request.json['password']),
                 'password_updated':str(datetime.now())
             },
-            'email_confirmed':False,
+            'email_confirmed':True,
             'picture' : {
                 'large' : "static/app/images/yp-logo-500X500.png",
                 'medium' : "static/app/images/yp-logo-300X300.png",
