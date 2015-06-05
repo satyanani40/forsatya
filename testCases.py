@@ -14,8 +14,9 @@ class FlaskrTestCase(unittest.TestCase):
     def setUp(self):
         self.app = app
         self.app.config['TESTING'] = True
-        self.app = self.app.test_client()
+
         connect('test', host='10.240.115.93', port=27017, username='test', password = 'test')
+        self.app = self.app.test_client()
 
 
     """def tearDown(self):
