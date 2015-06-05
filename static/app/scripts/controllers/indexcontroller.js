@@ -320,13 +320,11 @@ angular.module('weberApp')
 
         /* login functionality code goes here*/
             $scope.submitLogin = function() {
-                alert('hai')
                 $scope.show_login_busy = $auth.login({
                     email: this.formData.email,
                     password: this.formData.password
                 }).then(function(response) {
-                    console.log('-----------index user--------------', response)
-
+                    //console.log('-----------index user--------------', response)
                     $auth.setToken(response.data.token);
 
                     $rootScope.currentUser = response.data.user;
@@ -348,6 +346,7 @@ angular.module('weberApp')
                    socket_operations();
 
                 }, function(error) {
+                    console.log(error)
                     $('#loginError').fadeIn();
                     $scope.loginError = error.data.error;
                     $scope.showLoginError = true;
