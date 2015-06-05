@@ -11,9 +11,10 @@ import settings
 class FlaskrTestCase(unittest.TestCase):
 
     def setUp(self):
-        #self.app = app
-        server.app.config['TESTING'] = True
-        self.app = server.app.test_client()
+        self.app = app
+        self.app.config['TESTING'] = True
+        #self.app = server.app.test_client()
+        self.app.test_client()
 
 
     """def tearDown(self):

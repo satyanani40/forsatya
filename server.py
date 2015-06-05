@@ -40,12 +40,6 @@ app.config.update(
 	MAIL_USE_SSL=True,
 	MAIL_USERNAME = 'team@theweber.in',
 	MAIL_PASSWORD = 'ashok@weber',
-
-    MONGO_HOST = '10.240.115.93',
-    MONGO_PORT = 27017,
-    MONGO_USERNAME = 'test',
-    MONGO_PASSWORD = 'test',
-    MONGO_DBNAME = 'test'
 )
 
 
