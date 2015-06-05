@@ -22,14 +22,15 @@ class FlaskrTestCase(unittest.TestCase):
 
 
     def test_login(self):
-        email = 'dean.howard88@example.com'
+        email = 'dean.howard880@example.com'
         password = '111'
         response = self.app.post('/auth/login',
             data=json.dumps({
                 'email': email,
                 'password': password
             }), content_type='application/json')
-        print response
+
+        print response.data
         #json_data = json.loads(response.data)
         #print json_data
         #self.assertEqual(json_data['status_code'], 200)
@@ -41,7 +42,7 @@ class FlaskrTestCase(unittest.TestCase):
                 'email': email,
                 'password': password
             }), content_type='application/json')
-        print response
+        print response.data
         #json_data = json.loads(response.data)
         #print json_data
         #self.assertEqual(json_data['status_code'], 401)
@@ -63,7 +64,7 @@ class FlaskrTestCase(unittest.TestCase):
                 'lastname': lastname,
                 'username':username
             }), content_type='application/json')
-        print response
+        print response.data
         #json_data = json.loads(response.data)
         #print json_data
         #self.assertEqual(json_data['status_code'], 200)
