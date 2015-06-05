@@ -7,14 +7,12 @@ import  json
 import random
 from eve import Eve
 import settings
-from mongoengine import connect
+
 
 class FlaskrTestCase(unittest.TestCase):
 
     def setUp(self):
         app.config['TESTING'] = True
-        #app.config["MONGODB_DB"] = 'test'
-        #connect('test', host='10.240.115.93', port=27017, username='test', password = 'test')
         self.app = app.test_client()
 
 

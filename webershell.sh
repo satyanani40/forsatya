@@ -1,3 +1,3 @@
 git add -A
 git commit -m "comment"
-git push forsatya  master
+git push origin  master
