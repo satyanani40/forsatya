@@ -1,5 +1,5 @@
 import os
-import server
+from server import *
 from server import app
 import unittest
 import tempfile
@@ -7,20 +7,15 @@ import  json
 import random
 from eve import Eve
 import settings
+from pymongo import MongoClient
 
 class FlaskrTestCase(unittest.TestCase):
 
     def setUp(self):
         self.app = app
         self.app.config['TESTING'] = True
-
-        self.app.config['HOST'] = '10.240.115.93'
-        self.app.config['PORT'] = 27017
-        self.app.config['USERNAME'] = 'test'
-        self.app.config['PASSWORD'] = 'test'
-        self.app.config['DBNAME'] = 'test'
-
-        self.app = server.app.test_client()
+        self.app = self.app.test_client()
+        client = MongoClient('10.240.115.93', 27017)
 
 
     """def tearDown(self):
