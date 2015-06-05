@@ -1,6 +1,6 @@
 git add -A
 git commit -m 'testing'
-git pull origin  master
+git pull forsatya  master
 
 
 echo '---------compressing-------------'
