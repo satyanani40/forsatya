@@ -1,13 +1,8 @@
 import os
 from server import *
-from server import app
 import unittest
-import tempfile
-import  json
+import json
 import random
-from eve import Eve
-import settings
-
 
 class FlaskrTestCase(unittest.TestCase):
 
@@ -15,14 +10,8 @@ class FlaskrTestCase(unittest.TestCase):
         app.config['TESTING'] = True
         self.app = app.test_client()
 
-
-    """def tearDown(self):
-        os.close(self.db_fd)
-        os.unlink(server.app.config['DATABASE'])"""
-
-
     def test_login(self):
-        email = 'dean.howard880@example.com'
+        email = 'carole.gilbert16@example.com'
         password = '111'
         response = self.app.post('/auth/login',
             data=json.dumps({
@@ -30,10 +19,7 @@ class FlaskrTestCase(unittest.TestCase):
                 'password': password
             }), content_type='application/json')
 
-        print response.data
-        #json_data = json.loads(response.data)
-        #print json_data
-        #self.assertEqual(json_data['status_code'], 200)
+        self.assertEqual(response.status_code, 200)
 
         email = 'wrong_email@example.com'
         password = '222'
@@ -42,13 +28,10 @@ class FlaskrTestCase(unittest.TestCase):
                 'email': email,
                 'password': password
             }), content_type='application/json')
-        print response.data
-        #json_data = json.loads(response.data)
-        #print json_data
-        #self.assertEqual(json_data['status_code'], 401)
+        self.assertEqual(response.status_code, 401)
 
 
-    def test_register(self):
+    """def test_register(self):
 
         email = 'testing_email'+str(random.randint(1, 101099245))+'@example.com'
         password = '111'
@@ -67,7 +50,7 @@ class FlaskrTestCase(unittest.TestCase):
         print response.data
         #json_data = json.loads(response.data)
         #print json_data
-        #self.assertEqual(json_data['status_code'], 200)
+        #self.assertEqual(json_data['status_code'], 200)"""
 
 if __name__ == '__main__':
     unittest.main()

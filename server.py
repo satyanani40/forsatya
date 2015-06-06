@@ -46,6 +46,8 @@ app.config.update(
 mail=Mail(app)
 socketio = SocketIO(app)
 
+import socket
+print(socket.gethostname())
 
 def create_token(user):
     payload = {
@@ -79,25 +81,33 @@ def login_required(f):
 
 @app.route('/auth/login', methods=['POST'])
 def login():
-    accounts = app.data.driver.db['people']
-    print '------------login testing---------------'
-    print request.json['email']
-    user = accounts.find_one({'email': request.json['email']})
-    if not user:
-        response = jsonify(error='Your email does not exist')
-        response.status_code = 401
-        return response
-    if not user['email_confirmed'] == True:
-        response = jsonify(error='Email is not confirmed')
-        response.status_code = 401
-        return response
-    if not user or not check_password_hash(user['password']['password'], request.json['password']):
-        response = jsonify(error='Wrong Email or Password')
-        response.status_code = 401
-        return response
+    try:
+        accounts = app.data.driver.db['people']
+        print '------------login testing---------------'
+        print request.json['email']
+        user = accounts.find_one({'email': request.json['email']})
+        if not user:
+            response = jsonify(error='Your email does not exist')
+            response.status_code = 401
+            return response
+        if not user['email_confirmed'] == True:
+            response = jsonify(error='Email is not confirmed')
+            response.status_code = 401
+            return response
+        if not user or not check_password_hash(user['password']['password'], request.json['password']):
+            response = jsonify(error='Wrong Email or Password')
+            response.status_code = 401
+            return response
 
-    token = create_token(user)
-    return dumps({'user':filterIdFields(user, all=True), 'token': token, 'status_code':200})
+        token = create_token(user)
+        response = jsonify(user = filterIdFields(user, all=True), token = token)
+        response.status_code = 200
+        return response
+    except Exception as e:
+        print e
+        response = jsonify(error='Exception raised getting some error in code')
+        response.status_code = 401
+        return response
 
 
 
@@ -943,6 +953,7 @@ def join_into_room(id):
     return data
 
 #app.threaded=True
+print "APP IS RUNNING"
 socketio.run(app, host='127.0.0.1', port=int(os.environ.get('PORT', 8000)))
 # server sent events section
 """from redis import Redis
